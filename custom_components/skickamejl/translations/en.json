@@ -1,0 +1,78 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Skickamejl",
+        "description": "Enter your Skickamejl backend URL, API key, sender address, and default recipient.",
+        "data": {
+          "server_url": "Backend URL",
+          "api_key": "API key",
+          "sender_address": "Sender email address",
+          "recipient_address": "Default recipient email address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to Skickamejl.",
+      "invalid_email": "Enter a valid email address.",
+      "required": "This field is required.",
+      "unknown": "Unexpected error while connecting to Skickamejl."
+    },
+    "abort": {
+      "already_configured": "This Skickamejl notification target is already configured."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "backend_available": {
+        "name": "Backend available"
+      }
+    },
+    "sensor": {
+      "last_delivery_status": {
+        "name": "Last delivery status"
+      },
+      "last_delivery_id": {
+        "name": "Last delivery ID"
+      },
+      "last_message_id": {
+        "name": "Last message ID"
+      },
+      "last_queued_at": {
+        "name": "Last queued at"
+      }
+    }
+  },
+  "services": {
+    "send_email": {
+      "name": "Send email",
+      "description": "Send an email through Skickamejl.",
+      "fields": {
+        "to": {
+          "name": "To",
+          "description": "Recipient email address. Uses the configured default recipient when omitted."
+        },
+        "from": {
+          "name": "From",
+          "description": "Sender email address. Uses the configured sender when omitted."
+        },
+        "subject": {
+          "name": "Subject",
+          "description": "Email subject."
+        },
+        "text_body": {
+          "name": "Text body",
+          "description": "Plain-text email body."
+        },
+        "html_body": {
+          "name": "HTML body",
+          "description": "Optional HTML email body."
+        },
+        "entry_id": {
+          "name": "Entry ID",
+          "description": "Optional Skickamejl config entry ID when multiple entries are configured."
+        }
+      }
+    }
+  }
+}

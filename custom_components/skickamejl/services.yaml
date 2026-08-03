@@ -1,0 +1,30 @@
+send_email:
+  fields:
+    to:
+      required: false
+      selector:
+        text:
+          type: email
+    from:
+      required: false
+      selector:
+        text:
+          type: email
+    subject:
+      required: true
+      selector:
+        text:
+    text_body:
+      required: false
+      selector:
+        text:
+          multiline: true
+    html_body:
+      required: false
+      selector:
+        text:
+          multiline: true
+    entry_id:
+      required: false
+      selector:
+        text:

@@ -1,1 +1,200 @@
-# home-assistant-skickamejl
+<h1 align="center">Skickamejl for Home Assistant</h1>
+
+<p align="center">
+  <a href="https://github.com/MRCCollective/home-assistant-skickamejl/releases">
+    <img src="https://img.shields.io/github/v/release/MRCCollective/home-assistant-skickamejl?style=for-the-badge" alt="Release">
+  </a>
+  <a href="https://github.com/MRCCollective/home-assistant-skickamejl/actions/workflows/hacs.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hacs.yml?branch=main&label=HACS&style=for-the-badge" alt="HACS Validation">
+  </a>
+  <a href="https://github.com/MRCCollective/home-assistant-skickamejl/actions/workflows/hassfest.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hassfest.yml?branch=main&label=hassfest&style=for-the-badge" alt="Home Assistant Validation">
+  </a>
+  <a href="https://github.com/hacs/integration">
+    <img src="https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge" alt="HACS Custom">
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MRCCollective/home-assistant-skickamejl/main/custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
+</p>
+
+Custom Home Assistant integration for [Skickamejl](https://skickamejl.se), focused first on sending email notifications from automations through the Skickamejl email API.
+
+This repository is prepared for HACS as a custom integration. It is not submitted to the default HACS repository yet.
+
+## Features
+
+- UI config flow for Skickamejl backend URL, API key, sender address, and default recipient
+- Native Home Assistant `notify` entity for automation-friendly email notifications
+- Home Assistant action `skickamejl.send_email` for dynamic recipients, senders, text bodies, and HTML bodies
+- Diagnostic entities for backend availability and the last email sent from Home Assistant
+- Sends `title` as the email subject and `message` as the plain-text email body
+- Health-check validation against the configured backend during setup
+- Diagnostics with API key and email addresses redacted
+- HACS, Ruff, MyPy, HACS validation, and hassfest workflow files
+- Skickamejl brand assets included for HACS and the integration directory
+
+## Installation Through HACS Custom Repository
+
+1. Open HACS in Home Assistant.
+2. Go to **Integrations**.
+3. Choose **Custom repositories** from the menu.
+4. Add:
+
+   ```text
+   https://github.com/MRCCollective/home-assistant-skickamejl
+   ```
+
+5. Select category **Integration**.
+6. Install **Skickamejl**.
+7. Restart Home Assistant.
+8. In Home Assistant, add the **Skickamejl** integration from **Settings -> Devices & services -> Add integration**.
+
+## Add Skickamejl
+
+In Home Assistant, go to **Settings -> Devices & services -> Add integration** and search for **Skickamejl**.
+
+Enter:
+
+- Backend URL, for example `http://localhost:8080`
+- API key for the Skickamejl backend
+- Sender email address, for example `home@example.com`
+- Default recipient email address, for example `you@example.com`
+
+The config flow validates that the backend can be reached through `GET /health`. The API key is sent as `X-Api-Key` when Home Assistant sends an email through `POST /api/emails`.
+
+## Notification Entity
+
+The integration creates one notify entity per config entry. Home Assistant commonly names the first one:
+
+```text
+notify.skickamejl
+```
+
+If Home Assistant assigns a different entity ID, use the entity ID shown under **Settings -> Devices & services -> Entities**.
+
+## Entities
+
+Binary sensor:
+
+- `binary_sensor.skickamejl_backend_available`
+
+Sensors:
+
+- `sensor.skickamejl_last_delivery_status`
+- `sensor.skickamejl_last_delivery_id`
+- `sensor.skickamejl_last_message_id`
+- `sensor.skickamejl_last_queued_at`
+
+The backend availability sensor checks `GET /health` every 60 seconds. The last-send sensors update when Home Assistant successfully sends an email through either `notify.send_message` or `skickamejl.send_email`.
+
+Delivery status values follow the Skickamejl backend response:
+
+- `queued`
+- `processing`
+- `delivered`
+- `deferred`
+- `bounced`
+- `failed`
+
+## Services
+
+### Send an email
+
+Use `skickamejl.send_email` when an automation needs more control than the native notify entity.
+
+```yaml
+action: skickamejl.send_email
+data:
+  to: "family@example.com"
+  from: "home@example.com"
+  subject: "Dagens husrapport"
+  text_body: |
+    Temperatur: {{ states('sensor.living_room_temperature') }} °C
+    Luftfuktighet: {{ states('sensor.bathroom_humidity') }} %
+```
+
+`subject` is required. At least one of `text_body` or `html_body` is required. `to` and `from` are optional; when omitted, the integration uses the default recipient and sender from the config entry.
+
+If you configure multiple Skickamejl entries, include `entry_id` in service calls.
+
+```yaml
+action: skickamejl.send_email
+data:
+  entry_id: "01J..."
+  to: "ops@example.com"
+  subject: "Vattenläcka"
+  text_body: "Vatten upptäcktes vid tvättmaskinen."
+```
+
+HTML email is supported by passing `html_body`:
+
+```yaml
+action: skickamejl.send_email
+data:
+  subject: "Kvällsrapport"
+  text_body: "Ytterdörren är låst och alla lampor är släckta."
+  html_body: "<p>Ytterdörren är <strong>låst</strong> och alla lampor är släckta.</p>"
+```
+
+## Automation Examples
+
+Send an alarm email when a binary sensor turns on:
+
+```yaml
+alias: Email when hallway motion is detected
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.hallway_motion
+    to: "on"
+actions:
+  - action: notify.send_message
+    target:
+      entity_id: notify.skickamejl
+    data:
+      title: "Larm utlöst"
+      message: "Rörelse upptäcktes i hallen."
+```
+
+Send a daily house summary:
+
+```yaml
+alias: Daily house email
+triggers:
+  - trigger: time
+    at: "07:30:00"
+actions:
+  - action: notify.send_message
+    target:
+      entity_id: notify.skickamejl
+    data:
+      title: "Dagens husrapport"
+      message: |
+        Temperatur: {{ states('sensor.living_room_temperature') }} °C
+        Luftfuktighet: {{ states('sensor.bathroom_humidity') }} %
+        Ytterdörr: {{ states('binary_sensor.front_door') }}
+```
+
+## Current Scope
+
+This version supports native notify emails, a richer `skickamejl.send_email` action, backend health, and last-send diagnostics. Attachments, delivery history, and polling for final backend delivery outcomes can be added later once the send paths are working smoothly.
+
+## Development
+
+Install development dependencies:
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+Run local checks:
+
+```bash
+ruff check .
+ruff format --check .
+mypy custom_components/skickamejl
+pytest
+```
+
+Home Assistant and HACS validation run in GitHub Actions using hassfest and `hacs/action`. The test workflow runs Ruff, MyPy, and pytest.

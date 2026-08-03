@@ -1,0 +1,12 @@
+{
+  "domain": "skickamejl",
+  "name": "Skickamejl",
+  "codeowners": ["@MRCCollective"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/MRCCollective/home-assistant-skickamejl",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/MRCCollective/home-assistant-skickamejl/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

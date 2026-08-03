@@ -1,0 +1,78 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anslut Skickamejl",
+        "description": "Ange backend-URL, API-nyckel, avsändaradress och standardmottagare för Skickamejl.",
+        "data": {
+          "server_url": "Backend-URL",
+          "api_key": "API-nyckel",
+          "sender_address": "Avsändaradress",
+          "recipient_address": "Standardmottagare"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunde inte ansluta till Skickamejl.",
+      "invalid_email": "Ange en giltig e-postadress.",
+      "required": "Det här fältet är obligatoriskt.",
+      "unknown": "Oväntat fel vid anslutning till Skickamejl."
+    },
+    "abort": {
+      "already_configured": "Det här Skickamejl-målet är redan konfigurerat."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "backend_available": {
+        "name": "Backend tillgänglig"
+      }
+    },
+    "sensor": {
+      "last_delivery_status": {
+        "name": "Senaste leveransstatus"
+      },
+      "last_delivery_id": {
+        "name": "Senaste leverans-ID"
+      },
+      "last_message_id": {
+        "name": "Senaste meddelande-ID"
+      },
+      "last_queued_at": {
+        "name": "Senast köad"
+      }
+    }
+  },
+  "services": {
+    "send_email": {
+      "name": "Skicka e-post",
+      "description": "Skicka e-post via Skickamejl.",
+      "fields": {
+        "to": {
+          "name": "Till",
+          "description": "Mottagarens e-postadress. Den konfigurerade standardmottagaren används om fältet lämnas tomt."
+        },
+        "from": {
+          "name": "Från",
+          "description": "Avsändarens e-postadress. Den konfigurerade avsändaren används om fältet lämnas tomt."
+        },
+        "subject": {
+          "name": "Ämne",
+          "description": "E-postmeddelandets ämne."
+        },
+        "text_body": {
+          "name": "Textinnehåll",
+          "description": "E-postmeddelandets innehåll i ren text."
+        },
+        "html_body": {
+          "name": "HTML-innehåll",
+          "description": "Valfritt HTML-innehåll för e-postmeddelandet."
+        },
+        "entry_id": {
+          "name": "Entry-ID",
+          "description": "Valfritt config entry-ID för Skickamejl när flera instanser är konfigurerade."
+        }
+      }
+    }
+  }
+}
