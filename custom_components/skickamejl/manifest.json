@@ -1,12 +1,13 @@
 {
   "domain": "skickamejl",
   "name": "Skickamejl",
+  "after_dependencies": ["cloud"],
   "codeowners": ["@MRCCollective"],
   "config_flow": true,
   "dependencies": ["http", "webhook"],
   "documentation": "https://github.com/MRCCollective/home-assistant-skickamejl",
-  "iot_class": "cloud_poll",
+  "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/MRCCollective/home-assistant-skickamejl/issues",
   "requirements": [],
-  "version": "0.4.4"
+  "version": "0.4.5"
 }

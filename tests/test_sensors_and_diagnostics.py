@@ -226,8 +226,7 @@ def test_public_url_detection_handles_local_and_public_hosts() -> None:
     """Webhook hints should distinguish local and public-looking URLs."""
     assert _is_likely_public_url("http://192.168.50.227:8123/api/webhook/id") is False
     assert (
-        _is_likely_public_url("http://homeassistant.local:8123/api/webhook/id")
-        is False
+        _is_likely_public_url("http://homeassistant.local:8123/api/webhook/id") is False
     )
     assert _is_likely_public_url("https://hooks.nabu.casa/id") is True
 

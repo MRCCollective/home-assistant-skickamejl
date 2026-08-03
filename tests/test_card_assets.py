@@ -34,8 +34,7 @@ def test_card_registers_custom_card_and_editor() -> None:
         in source
     )
     assert (
-        '!window.customCards.some((card) => card.type === "skickamejl-card")'
-        in source
+        '!window.customCards.some((card) => card.type === "skickamejl-card")' in source
     )
     assert 'type: "skickamejl-card"' in source
     assert 'type: "custom:skickamejl-card"' in source
