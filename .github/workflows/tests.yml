@@ -15,6 +15,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Install dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Ruff
@@ -25,3 +28,7 @@ jobs:
         run: mypy custom_components/skickamejl
       - name: Pytest
         run: pytest
+      - name: Card syntax
+        run: |
+          node --check www/skickamejl-card.js
+          node --check custom_components/skickamejl/www/skickamejl-card.js

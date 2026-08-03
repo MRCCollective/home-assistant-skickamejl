@@ -5,10 +5,10 @@
     <img src="https://img.shields.io/github/v/release/MRCCollective/home-assistant-skickamejl?style=for-the-badge" alt="Release">
   </a>
   <a href="https://github.com/MRCCollective/home-assistant-skickamejl/actions/workflows/hacs.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hacs.yml?branch=main&label=HACS&style=for-the-badge" alt="HACS Validation">
+    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hacs.yml?branch=master&label=HACS&style=for-the-badge" alt="HACS Validation">
   </a>
   <a href="https://github.com/MRCCollective/home-assistant-skickamejl/actions/workflows/hassfest.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hassfest.yml?branch=main&label=hassfest&style=for-the-badge" alt="Home Assistant Validation">
+    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hassfest.yml?branch=master&label=hassfest&style=for-the-badge" alt="Home Assistant Validation">
   </a>
   <a href="https://github.com/hacs/integration">
     <img src="https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge" alt="HACS Custom">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MRCCollective/home-assistant-skickamejl/main/custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
+  <img src="custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
 </p>
 
 Custom Home Assistant integration for [Skickamejl](https://skickamejl.se), focused first on sending email notifications from automations through the Skickamejl email API.
@@ -29,6 +29,7 @@ This repository is prepared for HACS as a custom integration. It is not submitte
 - Native Home Assistant `notify` entity for automation-friendly email notifications
 - Home Assistant action `skickamejl.send_email` for dynamic recipients, senders, text bodies, and HTML bodies
 - Diagnostic entities for backend availability and the last email sent from Home Assistant
+- Custom Lovelace card with localized Swedish/English UI, icons, status overview, and a test-send form
 - Sends `title` as the email subject and `message` as the plain-text email body
 - Health-check validation against the configured backend during setup
 - Diagnostics with API key and email addresses redacted
@@ -97,6 +98,53 @@ Delivery status values follow the Skickamejl backend response:
 - `deferred`
 - `bounced`
 - `failed`
+
+## Dashboard Card
+
+This repository includes brand assets under `brand/` for HACS and an optional custom Lovelace card under the repository `www/` folder. HACS installs an integration-served copy of the card under `custom_components/skickamejl/www/`.
+
+Register the card resource:
+
+```text
+/skickamejl_static/skickamejl-card.js?v=0.2.0
+```
+
+Use resource type:
+
+```text
+JavaScript Module
+```
+
+Then add a manual dashboard card:
+
+```yaml
+type: custom:skickamejl-card
+```
+
+The card auto-detects the Skickamejl backend availability entity and last-send sensors. It shows backend status, last delivery status, queued time, delivery ID, message ID, and an optional test-send form that calls `skickamejl.send_email`.
+
+You can also pin exact entity IDs:
+
+```yaml
+type: custom:skickamejl-card
+backend_entity: binary_sensor.skickamejl_backend_available
+status_entity: sensor.skickamejl_last_delivery_status
+delivery_id_entity: sensor.skickamejl_last_delivery_id
+message_id_entity: sensor.skickamejl_last_message_id
+queued_at_entity: sensor.skickamejl_last_queued_at
+preferred_language: auto
+theme_mode: auto
+show_logo: true
+show_test_form: true
+```
+
+The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, test-form visibility, and entity overrides. The card uses icon buttons for copying IDs and sending/clearing the test form.
+
+When updating the card during development, copy the changed files from `www/` to `custom_components/skickamejl/www/` and reload the browser. If Home Assistant keeps an old cached card, add or change a cache-busting query string on the resource, for example:
+
+```text
+/skickamejl_static/skickamejl-card.js?v=dev
+```
 
 ## Services
 
@@ -195,6 +243,7 @@ ruff check .
 ruff format --check .
 mypy custom_components/skickamejl
 pytest
+node --check www/skickamejl-card.js
 ```
 
 Home Assistant and HACS validation run in GitHub Actions using hassfest and `hacs/action`. The test workflow runs Ruff, MyPy, and pytest.

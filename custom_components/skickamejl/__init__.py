@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -32,6 +34,8 @@ from .services import async_setup_services, async_unload_services
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+FRONTEND_PATH = Path(__file__).parent / "www"
+FRONTEND_URL = "/skickamejl_static"
 
 
 @dataclass(slots=True)
@@ -45,6 +49,9 @@ class SkickamejlRuntimeData:
 
 async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
     """Set up Skickamejl."""
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(FRONTEND_URL, str(FRONTEND_PATH), False)]
+    )
     await async_setup_services(hass)
     return True
 
