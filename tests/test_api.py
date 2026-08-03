@@ -86,9 +86,9 @@ def test_unique_id_for_config_is_stable_and_case_insensitive() -> None:
     assert first == second
 
 
-async def test_check_health_calls_health_endpoint_with_api_key() -> None:
-    """Health checks call the backend health endpoint with the configured key."""
-    session = FakeSession(FakeResponse(200, content_type="text/plain"))
+async def test_check_health_calls_status_endpoint_with_api_key() -> None:
+    """Health checks call the public status endpoint with the configured key."""
+    session = FakeSession(FakeResponse(200, json_data={"status": "ok"}, text="{}"))
     client = SkickamejlApiClient(session, "http://localhost:8080", "secret")
 
     assert await client.async_check_health() is True
@@ -96,7 +96,7 @@ async def test_check_health_calls_health_endpoint_with_api_key() -> None:
     assert session.requests == [
         {
             "method": "GET",
-            "url": "http://localhost:8080/health",
+            "url": "http://localhost:8080/api/status",
             "headers": {"X-Api-Key": "secret", "Accept": "application/json"},
             "json": None,
             "timeout": client._request.__globals__["_REQUEST_TIMEOUT"],
@@ -107,11 +107,9 @@ async def test_check_health_calls_health_endpoint_with_api_key() -> None:
 async def test_send_email_posts_backend_payload_and_parses_result() -> None:
     """Email sends post the Skickamejl payload and parse delivery metadata."""
     response_payload = {
-        "emailMessageId": "email-1",
         "deliveryId": "delivery-1",
         "messageId": "message-1",
-        "envelopeFrom": "bounce@example.com",
-        "status": 0,
+        "status": "queued",
         "queuedAtUtc": "2026-08-03T10:00:00Z",
     }
     session = FakeSession(
@@ -128,22 +126,23 @@ async def test_send_email_posts_backend_payload_and_parses_result() -> None:
     )
 
     assert result == SkickamejlEmailSendResult(
-        email_message_id="email-1",
+        email_message_id=None,
         delivery_id="delivery-1",
         message_id="message-1",
-        envelope_from="bounce@example.com",
-        status=0,
+        envelope_from=None,
+        status="queued",
         queued_at_utc="2026-08-03T10:00:00Z",
     )
     assert session.requests[0]["method"] == "POST"
-    assert session.requests[0]["url"] == "http://localhost:8080/api/emails"
+    assert session.requests[0]["url"] == "http://localhost:8080/api/messages"
     assert session.requests[0]["headers"]["X-Api-Key"] == "secret"
     assert session.requests[0]["json"] == {
-        "recipientAddress": "to@example.com",
-        "senderAddress": "from@example.com",
+        "to": "to@example.com",
+        "from": "from@example.com",
         "subject": "Subject",
         "textBody": "Text",
         "htmlBody": "<p>Text</p>",
+        "messageStream": "transactional",
     }
 
 
@@ -197,7 +196,9 @@ async def test_get_email_detail_fetches_delivery_endpoint_and_parses_history() -
     result = await client.async_get_email_detail("delivery/1")
 
     assert session.requests[0]["method"] == "GET"
-    assert session.requests[0]["url"] == "http://localhost:8080/api/emails/delivery%2F1"
+    assert (
+        session.requests[0]["url"] == "http://localhost:8080/api/messages/delivery%2F1"
+    )
     assert result == SkickamejlEmailSendResult(
         email_message_id="email-1",
         delivery_id="delivery/1",

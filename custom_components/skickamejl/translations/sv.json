@@ -3,10 +3,10 @@
     "step": {
       "user": {
         "title": "Anslut Skickamejl",
-        "description": "Ange backend-URL, API-nyckel, avsändaradress och standardmottagare för Skickamejl.",
+        "description": "Ange backend-URL, server API-token, avsändaradress och standardmottagare för Skickamejl.",
         "data": {
           "server_url": "Backend-URL",
-          "api_key": "API-nyckel",
+          "api_key": "Server API-token",
           "sender_address": "Avsändaradress",
           "recipient_address": "Standardmottagare"
         }
@@ -26,10 +26,10 @@
     "step": {
       "init": {
         "title": "Uppdatera Skickamejl",
-        "description": "Ändra backend-URL, API-nyckel, avsändaradress eller standardmottagare för Skickamejl.",
+        "description": "Ändra backend-URL, server API-token, avsändaradress eller standardmottagare för Skickamejl.",
         "data": {
           "server_url": "Backend-URL",
-          "api_key": "API-nyckel",
+          "api_key": "Server API-token",
           "sender_address": "Avsändaradress",
           "recipient_address": "Standardmottagare"
         }

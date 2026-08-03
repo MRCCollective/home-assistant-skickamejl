@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 
 DOMAIN: Final = "skickamejl"
 NAME: Final = "Skickamejl"
-DEFAULT_SERVER_URL: Final = "http://localhost:8080"
+DEFAULT_SERVER_URL: Final = "https://skickamejl.se"
 DEFAULT_SCAN_INTERVAL: Final = timedelta(seconds=60)
 
 CONF_API_KEY: Final = "api_key"

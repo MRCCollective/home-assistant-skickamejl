@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
+  <img src="https://raw.githubusercontent.com/MRCCollective/home-assistant-skickamejl/master/custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
 </p>
 
 Custom Home Assistant integration for [Skickamejl](https://skickamejl.se), focused first on sending email notifications from automations through the Skickamejl email API.
@@ -25,8 +25,8 @@ This repository is prepared for HACS as a custom integration. It is not submitte
 
 ## Features
 
-- UI config flow for Skickamejl backend URL, API key, sender address, and default recipient
-- Options flow for changing backend URL, API key, sender address, and default recipient without deleting the integration
+- UI config flow for Skickamejl backend URL, server API-token, sender address, and default recipient
+- Options flow for changing backend URL, server API-token, sender address, and default recipient without deleting the integration
 - Native Home Assistant `notify` entity for automation-friendly email notifications
 - Home Assistant action `skickamejl.send_email` for dynamic recipients, senders, text bodies, and HTML bodies
 - Diagnostic entities for backend availability and the last email sent from Home Assistant
@@ -34,22 +34,22 @@ This repository is prepared for HACS as a custom integration. It is not submitte
 - Custom Lovelace card with localized Swedish/English UI, icons, status overview, delivery history, recipient presets, and a test-send form
 - Sends `title` as the email subject and `message` as the plain-text email body
 - Health-check validation against the configured backend during setup
-- Diagnostics with API key and email addresses redacted
+- Diagnostics with server API-token and email addresses redacted
 - HACS, Ruff, MyPy, HACS validation, and hassfest workflow files
 - Skickamejl brand assets included for HACS and the integration directory
 
 ## Installation Through HACS Custom Repository
 
 1. Open HACS in Home Assistant.
-2. Go to **Integrations**.
-3. Choose **Custom repositories** from the menu.
+2. Go to **Integrations** / **Integrationer**.
+3. Choose **Custom repositories** / **Anpassade arkiv** from the menu.
 4. Add:
 
    ```text
    https://github.com/MRCCollective/home-assistant-skickamejl
    ```
 
-5. Select category **Integration**.
+5. Select category **Integration** / **Integration**.
 6. Install **Skickamejl**.
 7. Restart Home Assistant.
 8. In Home Assistant, add the **Skickamejl** integration from **Settings -> Devices & services -> Add integration**.
@@ -60,14 +60,16 @@ In Home Assistant, go to **Settings -> Devices & services -> Add integration** a
 
 Enter:
 
-- Backend URL, for example `http://localhost:8080`
-- API key for the Skickamejl backend
+- Backend URL, for example `https://skickamejl.se`
+- Server API-token from the selected Skickamejl server
 - Sender email address, for example `home@example.com`
 - Default recipient email address, for example `you@example.com`
 
-The config flow validates that the backend can be reached through `GET /health`. The API key is sent as `X-Api-Key` when Home Assistant sends an email through `POST /api/emails`.
+The config flow validates that the backend can be reached through `GET /api/status`. The server API-token is sent as `X-Api-Key` when Home Assistant sends an email through `POST /api/messages`.
 
-After setup, open **Settings -> Devices & services -> Skickamejl -> Configure** to update the backend URL, API key, sender address, or default recipient without removing and re-adding the integration.
+Use the **Server API-token** shown on the Skickamejl server settings page. Account API tokens that start with `skm_account_` are for account-management API calls and cannot send messages through `POST /api/messages`.
+
+After setup, open **Settings -> Devices & services -> Skickamejl -> Configure** to update the backend URL, server API-token, sender address, or default recipient without removing and re-adding the integration.
 
 ## Notification Entity
 
@@ -92,12 +94,12 @@ Sensors:
 - `sensor.skickamejl_last_message_id`
 - `sensor.skickamejl_last_queued_at`
 
-The backend availability sensor checks `GET /health` every 60 seconds. The last-send sensors update when Home Assistant successfully sends an email through either `notify.send_message` or `skickamejl.send_email`.
+The backend availability sensor checks `GET /api/status` every 60 seconds. The last-send sensors update when Home Assistant successfully sends an email through either `notify.send_message` or `skickamejl.send_email`.
 
 When a send response includes a `deliveryId`, the integration stores it and polls the Skickamejl detail endpoint every 60 seconds:
 
 ```text
-GET /api/emails/{deliveryId}
+GET /api/messages/{deliveryId}
 ```
 
 Polling stops when the status becomes `delivered`, `bounced`, or `failed`, or when a newer email replaces the last delivery ID. Detail responses can add attributes such as attempt count, last error, attempts, and status events to the last-send sensors.

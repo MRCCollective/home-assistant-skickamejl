@@ -129,16 +129,16 @@ class SkickamejlApiClient:
 
     @property
     def api_key_fingerprint(self) -> str:
-        """Return a non-secret fingerprint of the configured API key."""
+        """Return a non-secret fingerprint of the configured server API token."""
         return hashlib.sha256(self._api_key.encode()).hexdigest()[:12]
 
     async def async_validate_connection(self) -> None:
         """Validate that the configured Skickamejl backend is reachable."""
-        await self._request("GET", "/health", expect_json=False)
+        await self._request("GET", "/api/status")
 
     async def async_check_health(self) -> bool:
         """Return whether the Skickamejl backend health endpoint is reachable."""
-        await self._request("GET", "/health", expect_json=False)
+        await self._request("GET", "/api/status")
         return True
 
     async def async_send_email(
@@ -153,13 +153,14 @@ class SkickamejlApiClient:
         """Send a plain-text email through Skickamejl."""
         data = await self._request(
             "POST",
-            "/api/emails",
+            "/api/messages",
             json={
-                "recipientAddress": recipient_address,
-                "senderAddress": sender_address,
+                "to": recipient_address,
+                "from": sender_address,
                 "subject": subject,
                 "textBody": text_body,
                 "htmlBody": html_body,
+                "messageStream": "transactional",
             },
         )
         if not isinstance(data, dict):
@@ -173,7 +174,7 @@ class SkickamejlApiClient:
         """Fetch detailed delivery status for an email."""
         data = await self._request(
             "GET",
-            f"/api/emails/{quote_path_value(delivery_id)}",
+            f"/api/messages/{quote_path_value(delivery_id)}",
         )
         if not isinstance(data, dict):
             raise SkickamejlValidationError("Unexpected email detail response from API")
@@ -251,9 +252,9 @@ class SkickamejlApiClient:
     async def _raise_for_status(self, response: ClientResponse) -> None:
         """Raise a typed integration exception for unsuccessful responses."""
         if response.status == HTTPStatus.UNAUTHORIZED:
-            raise SkickamejlAuthError("Invalid Skickamejl API key")
+            raise SkickamejlAuthError("Invalid Skickamejl server API token")
         if response.status == HTTPStatus.FORBIDDEN:
-            raise SkickamejlAuthError("Skickamejl API key is not allowed")
+            raise SkickamejlAuthError("Skickamejl server API token is not allowed")
         if response.status == HTTPStatus.NOT_FOUND:
             raise SkickamejlNotFoundError("Skickamejl resource not found")
 

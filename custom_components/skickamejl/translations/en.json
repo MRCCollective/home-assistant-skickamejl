@@ -3,10 +3,10 @@
     "step": {
       "user": {
         "title": "Connect Skickamejl",
-        "description": "Enter your Skickamejl backend URL, API key, sender address, and default recipient.",
+        "description": "Enter your Skickamejl backend URL, server API token, sender address, and default recipient.",
         "data": {
           "server_url": "Backend URL",
-          "api_key": "API key",
+          "api_key": "Server API token",
           "sender_address": "Sender email address",
           "recipient_address": "Default recipient email address"
         }
@@ -26,10 +26,10 @@
     "step": {
       "init": {
         "title": "Update Skickamejl",
-        "description": "Change the Skickamejl backend URL, API key, sender address, or default recipient.",
+        "description": "Change the Skickamejl backend URL, server API token, sender address, or default recipient.",
         "data": {
           "server_url": "Backend URL",
-          "api_key": "API key",
+          "api_key": "Server API token",
           "sender_address": "Sender email address",
           "recipient_address": "Default recipient email address"
         }

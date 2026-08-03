@@ -83,7 +83,7 @@ class SkickamejlNotifyEntity(NotifyEntity):
                 text_body=message,
             )
         except SkickamejlAuthError as err:
-            raise HomeAssistantError("Invalid Skickamejl API key") from err
+            raise HomeAssistantError("Invalid Skickamejl server API token") from err
         except SkickamejlConnectionError as err:
             raise HomeAssistantError("Could not connect to Skickamejl") from err
         except SkickamejlError as err:
