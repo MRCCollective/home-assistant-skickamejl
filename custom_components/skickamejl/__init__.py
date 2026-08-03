@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +21,7 @@ from .api import (
     SkickamejlEmailSendResult,
     SkickamejlError,
 )
+from .config import config_entry_data
 from .const import (
     CONF_API_KEY,
     CONF_SERVER_URL,
@@ -29,6 +31,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import SkickamejlHealthCoordinator
+from .runtime import async_stop_delivery_polling
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,9 +45,11 @@ FRONTEND_URL = "/skickamejl_static"
 class SkickamejlRuntimeData:
     """Runtime data stored on the config entry."""
 
+    hass: HomeAssistant
     api: SkickamejlApiClient
     coordinator: SkickamejlHealthCoordinator
     last_send: SkickamejlEmailSendResult | None = None
+    delivery_poll_task: asyncio.Task[None] | None = None
 
 
 async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
@@ -61,10 +66,11 @@ async def async_setup_entry(
     entry: ConfigEntry,
 ) -> bool:
     """Set up Skickamejl from a config entry."""
+    data = config_entry_data(entry)
     api = SkickamejlApiClient(
         async_get_clientsession(hass),
-        entry.data[CONF_SERVER_URL],
-        entry.data[CONF_API_KEY],
+        data[CONF_SERVER_URL],
+        data[CONF_API_KEY],
     )
 
     try:
@@ -77,8 +83,13 @@ async def async_setup_entry(
     coordinator = SkickamejlHealthCoordinator(hass, api)
     await coordinator.async_config_entry_first_refresh()
 
-    entry.runtime_data = SkickamejlRuntimeData(api=api, coordinator=coordinator)
+    entry.runtime_data = SkickamejlRuntimeData(
+        hass=hass,
+        api=api,
+        coordinator=coordinator,
+    )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry.runtime_data
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -89,6 +100,7 @@ async def async_unload_entry(
     entry: ConfigEntry,
 ) -> bool:
     """Unload a Skickamejl config entry."""
+    await async_stop_delivery_polling(entry)
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
@@ -123,3 +135,11 @@ async def async_migrate_entry(
     )
     hass.config_entries.async_update_entry(entry, version=CURRENT_ENTRY_VERSION)
     return True
+
+
+async def _async_update_listener(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> None:
+    """Reload Skickamejl when options are updated."""
+    await hass.config_entries.async_reload(entry.entry_id)

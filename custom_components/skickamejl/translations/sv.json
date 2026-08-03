@@ -22,6 +22,26 @@
       "already_configured": "Det här Skickamejl-målet är redan konfigurerat."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Uppdatera Skickamejl",
+        "description": "Ändra backend-URL, API-nyckel, avsändaradress eller standardmottagare för Skickamejl.",
+        "data": {
+          "server_url": "Backend-URL",
+          "api_key": "API-nyckel",
+          "sender_address": "Avsändaradress",
+          "recipient_address": "Standardmottagare"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunde inte ansluta till Skickamejl.",
+      "invalid_email": "Ange en giltig e-postadress.",
+      "required": "Det här fältet är obligatoriskt.",
+      "unknown": "Oväntat fel vid anslutning till Skickamejl."
+    }
+  },
   "entity": {
     "binary_sensor": {
       "backend_available": {

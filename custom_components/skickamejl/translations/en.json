@@ -22,6 +22,26 @@
       "already_configured": "This Skickamejl notification target is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update Skickamejl",
+        "description": "Change the Skickamejl backend URL, API key, sender address, or default recipient.",
+        "data": {
+          "server_url": "Backend URL",
+          "api_key": "API key",
+          "sender_address": "Sender email address",
+          "recipient_address": "Default recipient email address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to Skickamejl.",
+      "invalid_email": "Enter a valid email address.",
+      "required": "This field is required.",
+      "unknown": "Unexpected error while connecting to Skickamejl."
+    }
+  },
   "entity": {
     "binary_sensor": {
       "backend_available": {

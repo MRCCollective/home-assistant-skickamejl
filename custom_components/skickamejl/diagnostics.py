@@ -8,6 +8,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .config import config_entry_data
 from .const import (
     CONF_API_KEY,
     CONF_RECIPIENT_ADDRESS,
@@ -31,7 +32,8 @@ async def async_get_config_entry_diagnostics(
         "entry": {
             "entry_id": entry.entry_id,
             "version": entry.version,
-            "data": async_redact_data(dict(entry.data), _TO_REDACT),
+            "data": async_redact_data(config_entry_data(entry), _TO_REDACT),
+            "options": async_redact_data(dict(entry.options), _TO_REDACT),
         },
         "loaded": entry.entry_id in hass.data.get(DOMAIN, {}),
         "health": _health_summary(entry),
@@ -49,7 +51,7 @@ def _health_summary(entry: ConfigEntry) -> dict[str, bool | None]:
     }
 
 
-def _last_send_summary(entry: ConfigEntry) -> dict[str, str | int | None] | None:
+def _last_send_summary(entry: ConfigEntry) -> dict[str, Any] | None:
     """Return last-send diagnostics for a config entry."""
     runtime_data = getattr(entry, "runtime_data", None)
     result = getattr(runtime_data, "last_send", None)
@@ -62,4 +64,12 @@ def _last_send_summary(entry: ConfigEntry) -> dict[str, str | int | None] | None
         "envelope_from": result.envelope_from,
         "status": result.status,
         "queued_at_utc": result.queued_at_utc,
+        "attempt_count": result.attempt_count,
+        "created_at_utc": result.created_at_utc,
+        "last_attempt_at_utc": result.last_attempt_at_utc,
+        "next_attempt_at_utc": result.next_attempt_at_utc,
+        "completed_at_utc": result.completed_at_utc,
+        "last_error": result.last_error,
+        "attempts": list(result.attempts),
+        "status_events": list(result.status_events),
     }

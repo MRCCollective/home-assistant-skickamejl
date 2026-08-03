@@ -10,6 +10,7 @@ from custom_components.skickamejl.api import (
     SkickamejlApiClient,
     SkickamejlAuthError,
     SkickamejlEmailSendResult,
+    SkickamejlNotFoundError,
     SkickamejlValidationError,
     normalize_server_url,
     unique_id_for_config,
@@ -158,6 +159,82 @@ async def test_send_email_rejects_non_json_response() -> None:
             subject="Subject",
             text_body="Text",
         )
+
+
+async def test_get_email_detail_fetches_delivery_endpoint_and_parses_history() -> None:
+    """Delivery detail polling parses status history and attempt metadata."""
+    response_payload = {
+        "EmailMessageId": "email-1",
+        "DeliveryId": "delivery/1",
+        "MessageId": "message-1",
+        "EnvelopeFrom": "bounce@example.com",
+        "Status": "Delivered",
+        "AttemptCount": 1,
+        "CreatedAtUtc": "2026-08-03T10:00:00Z",
+        "LastAttemptAtUtc": "2026-08-03T10:01:00Z",
+        "CompletedAtUtc": "2026-08-03T10:01:10Z",
+        "LastError": None,
+        "Attempts": [
+            {
+                "attemptNumber": 1,
+                "status": "Delivered",
+                "attemptedAtUtc": "2026-08-03T10:01:00Z",
+            }
+        ],
+        "StatusEvents": [
+            {
+                "eventId": "event-1",
+                "status": "Delivered",
+                "occurredAtUtc": "2026-08-03T10:01:10Z",
+            }
+        ],
+    }
+    session = FakeSession(
+        FakeResponse(200, json_data=response_payload, text='{"ok":true}')
+    )
+    client = SkickamejlApiClient(session, "http://localhost:8080", "secret")
+
+    result = await client.async_get_email_detail("delivery/1")
+
+    assert session.requests[0]["method"] == "GET"
+    assert session.requests[0]["url"] == "http://localhost:8080/api/emails/delivery%2F1"
+    assert result == SkickamejlEmailSendResult(
+        email_message_id="email-1",
+        delivery_id="delivery/1",
+        message_id="message-1",
+        envelope_from="bounce@example.com",
+        status="Delivered",
+        queued_at_utc="2026-08-03T10:00:00Z",
+        attempt_count=1,
+        created_at_utc="2026-08-03T10:00:00Z",
+        last_attempt_at_utc="2026-08-03T10:01:00Z",
+        next_attempt_at_utc=None,
+        completed_at_utc="2026-08-03T10:01:10Z",
+        last_error=None,
+        attempts=(
+            {
+                "attemptNumber": 1,
+                "status": "Delivered",
+                "attemptedAtUtc": "2026-08-03T10:01:00Z",
+            },
+        ),
+        status_events=(
+            {
+                "eventId": "event-1",
+                "status": "Delivered",
+                "occurredAtUtc": "2026-08-03T10:01:10Z",
+            },
+        ),
+    )
+
+
+async def test_get_email_detail_raises_not_found() -> None:
+    """Missing delivery detail responses become typed not-found errors."""
+    session = FakeSession(FakeResponse(404))
+    client = SkickamejlApiClient(session, "http://localhost:8080", "secret")
+
+    with pytest.raises(SkickamejlNotFoundError):
+        await client.async_get_email_detail("missing-delivery")
 
 
 async def test_unauthorized_response_raises_auth_error() -> None:

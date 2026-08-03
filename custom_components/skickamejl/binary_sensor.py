@@ -11,6 +11,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .config import config_entry_data
 from .const import CONF_SERVER_URL, DOMAIN
 from .coordinator import SkickamejlHealthCoordinator
 from .entity import SkickamejlEntity
@@ -23,12 +24,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up Skickamejl binary sensors."""
     coordinator: SkickamejlHealthCoordinator = entry.runtime_data.coordinator
+    data = config_entry_data(entry)
     async_add_entities(
         [
             SkickamejlBackendAvailableBinarySensor(
                 coordinator,
                 entry.entry_id,
-                entry.data.get(CONF_SERVER_URL),
+                data.get(CONF_SERVER_URL),
             )
         ]
     )

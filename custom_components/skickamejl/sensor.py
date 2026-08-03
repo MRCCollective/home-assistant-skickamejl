@@ -119,7 +119,9 @@ class SkickamejlLastSendSensor(SensorEntity):
         return self.entity_description.value_fn(result)
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | int | None] | None:
+    def extra_state_attributes(
+        self,
+    ) -> dict[str, str | int | list[dict[str, object]] | None] | None:
         """Return last-send details."""
         result: SkickamejlEmailSendResult | None = self._entry.runtime_data.last_send
         if result is None:
@@ -132,14 +134,32 @@ class SkickamejlLastSendSensor(SensorEntity):
             "status": result.status,
             "status_name": _delivery_status(result.status),
             "queued_at_utc": result.queued_at_utc,
+            "attempt_count": result.attempt_count,
+            "created_at_utc": result.created_at_utc,
+            "last_attempt_at_utc": result.last_attempt_at_utc,
+            "next_attempt_at_utc": result.next_attempt_at_utc,
+            "completed_at_utc": result.completed_at_utc,
+            "last_error": result.last_error,
+            "attempts": list(result.attempts),
+            "status_events": list(result.status_events),
         }
 
 
-def _delivery_status(status: int | None) -> str | None:
+def _delivery_status(status: int | str | None) -> str | None:
     """Map a Skickamejl numeric delivery status to a readable state."""
     if status is None:
         return None
+    if isinstance(status, str):
+        normalized = status.strip().lower()
+        if normalized.isdigit():
+            return DELIVERY_STATUSES.get(int(normalized), normalized)
+        return normalized or None
     return DELIVERY_STATUSES.get(status, str(status))
+
+
+def is_terminal_delivery_status(status: int | str | None) -> bool:
+    """Return whether a delivery status is terminal."""
+    return _delivery_status(status) in {"delivered", "bounced", "failed"}
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:

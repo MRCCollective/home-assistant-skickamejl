@@ -46,6 +46,12 @@ def test_card_contains_swedish_and_english_localization() -> None:
     assert "Skickamejl är inte konfigurerat än" in source
     assert "languageFromHass" in source
     assert "preferred_language" in source
+    assert "Delivery history" in source
+    assert "Leveranshistorik" in source
+    assert "Recipient preset" in source
+    assert "Mottagarförval" in source
+    assert "No email sent yet" in source
+    assert "Ingen e-post skickad än" in source
 
 
 def test_card_resource_version_matches_docs_and_manifest() -> None:

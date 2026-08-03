@@ -7,7 +7,7 @@ import hashlib
 from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 
 from aiohttp import (
     ClientConnectionError,
@@ -34,6 +34,10 @@ class SkickamejlConnectionError(SkickamejlError):
     """Could not connect to Skickamejl."""
 
 
+class SkickamejlNotFoundError(SkickamejlError):
+    """The requested Skickamejl resource was not found."""
+
+
 class SkickamejlServerError(SkickamejlError):
     """Skickamejl returned a retryable server-side error."""
 
@@ -50,8 +54,16 @@ class SkickamejlEmailSendResult:
     delivery_id: str | None
     message_id: str | None
     envelope_from: str | None
-    status: int | None
+    status: int | str | None
     queued_at_utc: str | None
+    attempt_count: int | None = None
+    created_at_utc: str | None = None
+    last_attempt_at_utc: str | None = None
+    next_attempt_at_utc: str | None = None
+    completed_at_utc: str | None = None
+    last_error: str | None = None
+    attempts: tuple[dict[str, Any], ...] = ()
+    status_events: tuple[dict[str, Any], ...] = ()
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> SkickamejlEmailSendResult:
@@ -61,8 +73,43 @@ class SkickamejlEmailSendResult:
             delivery_id=_as_optional_str(data.get("deliveryId")),
             message_id=_as_optional_str(data.get("messageId")),
             envelope_from=_as_optional_str(data.get("envelopeFrom")),
-            status=_as_optional_int(data.get("status")),
+            status=_as_optional_status(data.get("status")),
             queued_at_utc=_as_optional_str(data.get("queuedAtUtc")),
+        )
+
+    @classmethod
+    def from_detail_api(cls, data: dict[str, Any]) -> SkickamejlEmailSendResult:
+        """Build a send result from the detailed delivery API response."""
+        attempts = _as_dict_tuple(_api_value(data, "attempts", "Attempts"))
+        status_events = _as_dict_tuple(_api_value(data, "statusEvents", "StatusEvents"))
+        created_at = _as_optional_str(_api_value(data, "createdAtUtc", "CreatedAtUtc"))
+        return cls(
+            email_message_id=_as_optional_str(
+                _api_value(data, "emailMessageId", "EmailMessageId")
+            ),
+            delivery_id=_as_optional_str(_api_value(data, "deliveryId", "DeliveryId")),
+            message_id=_as_optional_str(_api_value(data, "messageId", "MessageId")),
+            envelope_from=_as_optional_str(
+                _api_value(data, "envelopeFrom", "EnvelopeFrom")
+            ),
+            status=_as_optional_status(_api_value(data, "status", "Status")),
+            queued_at_utc=created_at,
+            attempt_count=_as_optional_int(
+                _api_value(data, "attemptCount", "AttemptCount")
+            ),
+            created_at_utc=created_at,
+            last_attempt_at_utc=_as_optional_str(
+                _api_value(data, "lastAttemptAtUtc", "LastAttemptAtUtc")
+            ),
+            next_attempt_at_utc=_as_optional_str(
+                _api_value(data, "nextAttemptAtUtc", "NextAttemptAtUtc")
+            ),
+            completed_at_utc=_as_optional_str(
+                _api_value(data, "completedAtUtc", "CompletedAtUtc")
+            ),
+            last_error=_as_optional_str(_api_value(data, "lastError", "LastError")),
+            attempts=attempts,
+            status_events=status_events,
         )
 
 
@@ -118,6 +165,19 @@ class SkickamejlApiClient:
         if not isinstance(data, dict):
             raise SkickamejlValidationError("Unexpected send response from API")
         return SkickamejlEmailSendResult.from_api(data)
+
+    async def async_get_email_detail(
+        self,
+        delivery_id: str,
+    ) -> SkickamejlEmailSendResult:
+        """Fetch detailed delivery status for an email."""
+        data = await self._request(
+            "GET",
+            f"/api/emails/{quote_path_value(delivery_id)}",
+        )
+        if not isinstance(data, dict):
+            raise SkickamejlValidationError("Unexpected email detail response from API")
+        return SkickamejlEmailSendResult.from_detail_api(data)
 
     async def _request(
         self,
@@ -194,6 +254,8 @@ class SkickamejlApiClient:
             raise SkickamejlAuthError("Invalid Skickamejl API key")
         if response.status == HTTPStatus.FORBIDDEN:
             raise SkickamejlAuthError("Skickamejl API key is not allowed")
+        if response.status == HTTPStatus.NOT_FOUND:
+            raise SkickamejlNotFoundError("Skickamejl resource not found")
 
         if response.status in _RETRYABLE_STATUSES:
             text = await response.text()
@@ -232,6 +294,11 @@ def unique_id_for_config(
     return hashlib.sha256(material.encode()).hexdigest()
 
 
+def quote_path_value(value: str) -> str:
+    """Quote a value for use in an API path."""
+    return quote(value, safe="")
+
+
 def _as_optional_int(value: Any) -> int | None:
     """Convert API value to optional int."""
     if value is None:
@@ -242,9 +309,34 @@ def _as_optional_int(value: Any) -> int | None:
         return None
 
 
+def _as_optional_status(value: Any) -> int | str | None:
+    """Convert API status value to a useful optional status."""
+    if value is None:
+        return None
+    int_value = _as_optional_int(value)
+    if int_value is not None and not isinstance(value, bool):
+        return int_value
+    return _as_optional_str(value)
+
+
 def _as_optional_str(value: Any) -> str | None:
     """Convert API value to optional string."""
     if value is None:
         return None
     text = str(value)
     return text if text else None
+
+
+def _api_value(data: dict[str, Any], *keys: str) -> Any:
+    """Return the first present API value, preserving false-y values."""
+    for key in keys:
+        if key in data:
+            return data[key]
+    return None
+
+
+def _as_dict_tuple(value: Any) -> tuple[dict[str, Any], ...]:
+    """Return a tuple of dictionaries from an API list value."""
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, dict))

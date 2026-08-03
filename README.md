@@ -26,10 +26,12 @@ This repository is prepared for HACS as a custom integration. It is not submitte
 ## Features
 
 - UI config flow for Skickamejl backend URL, API key, sender address, and default recipient
+- Options flow for changing backend URL, API key, sender address, and default recipient without deleting the integration
 - Native Home Assistant `notify` entity for automation-friendly email notifications
 - Home Assistant action `skickamejl.send_email` for dynamic recipients, senders, text bodies, and HTML bodies
 - Diagnostic entities for backend availability and the last email sent from Home Assistant
-- Custom Lovelace card with localized Swedish/English UI, icons, status overview, and a test-send form
+- Delivery-detail polling every 60 seconds after each send until Skickamejl reports a final outcome
+- Custom Lovelace card with localized Swedish/English UI, icons, status overview, delivery history, recipient presets, and a test-send form
 - Sends `title` as the email subject and `message` as the plain-text email body
 - Health-check validation against the configured backend during setup
 - Diagnostics with API key and email addresses redacted
@@ -65,6 +67,8 @@ Enter:
 
 The config flow validates that the backend can be reached through `GET /health`. The API key is sent as `X-Api-Key` when Home Assistant sends an email through `POST /api/emails`.
 
+After setup, open **Settings -> Devices & services -> Skickamejl -> Configure** to update the backend URL, API key, sender address, or default recipient without removing and re-adding the integration.
+
 ## Notification Entity
 
 The integration creates one notify entity per config entry. Home Assistant commonly names the first one:
@@ -90,6 +94,14 @@ Sensors:
 
 The backend availability sensor checks `GET /health` every 60 seconds. The last-send sensors update when Home Assistant successfully sends an email through either `notify.send_message` or `skickamejl.send_email`.
 
+When a send response includes a `deliveryId`, the integration stores it and polls the Skickamejl detail endpoint every 60 seconds:
+
+```text
+GET /api/emails/{deliveryId}
+```
+
+Polling stops when the status becomes `delivered`, `bounced`, or `failed`, or when a newer email replaces the last delivery ID. Detail responses can add attributes such as attempt count, last error, attempts, and status events to the last-send sensors.
+
 Delivery status values follow the Skickamejl backend response:
 
 - `queued`
@@ -106,7 +118,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.2.0
+/skickamejl_static/skickamejl-card.js?v=0.3.0
 ```
 
 Use resource type:
@@ -121,7 +133,7 @@ Then add a manual dashboard card:
 type: custom:skickamejl-card
 ```
 
-The card auto-detects the Skickamejl backend availability entity and last-send sensors. It shows backend status, last delivery status, queued time, delivery ID, message ID, and an optional test-send form that calls `skickamejl.send_email`.
+The card auto-detects the Skickamejl backend availability entity and last-send sensors. It shows backend status, last delivery status, queued time, delivery ID, message ID, delivery history from status events, and an optional test-send form that calls `skickamejl.send_email`.
 
 You can also pin exact entity IDs:
 
@@ -136,9 +148,18 @@ preferred_language: auto
 theme_mode: auto
 show_logo: true
 show_test_form: true
+recipient_presets:
+  - name: Me
+    email: you@example.com
+  - name: Family
+    email: family@example.com
+  - name: Ops
+    email: ops@example.com
 ```
 
-The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, test-form visibility, and entity overrides. The card uses icon buttons for copying IDs and sending/clearing the test form.
+The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, test-form visibility, and entity overrides. Recipient presets are configured in YAML and appear as a dropdown that fills the `to` field while still allowing custom recipients. The card uses icon buttons for copying IDs and sending/clearing the test form.
+
+Before the first email has been sent, the card shows a compact empty state instead of empty delivery IDs. After the first send, it switches to the status, IDs, and delivery history view.
 
 When updating the card during development, copy the changed files from `www/` to `custom_components/skickamejl/www/` and reload the browser. If Home Assistant keeps an old cached card, add or change a cache-busting query string on the resource, for example:
 
@@ -224,9 +245,31 @@ actions:
         Ytterdörr: {{ states('binary_sensor.front_door') }}
 ```
 
+Notify your phone if the latest Skickamejl delivery fails:
+
+```yaml
+alias: Notify when Skickamejl email failed
+triggers:
+  - trigger: state
+    entity_id: sensor.skickamejl_last_delivery_status
+    to: "failed"
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: "Skickamejl could not deliver the last Home Assistant email."
+```
+
+## Try It For Real Checklist
+
+1. Confirm `binary_sensor.skickamejl_backend_available` is `on`.
+2. Send a test email from the Skickamejl card.
+3. Watch `sensor.skickamejl_last_delivery_status` move from `queued` or `processing` to a final state.
+4. Open the card and confirm delivery ID, message ID, and delivery history appear.
+5. Change one setting from **Settings -> Devices & services -> Skickamejl -> Configure** and confirm the integration reloads cleanly.
+
 ## Current Scope
 
-This version supports native notify emails, a richer `skickamejl.send_email` action, backend health, and last-send diagnostics. Attachments, delivery history, and polling for final backend delivery outcomes can be added later once the send paths are working smoothly.
+This version supports native notify emails, a richer `skickamejl.send_email` action, backend health, options flow, delivery-detail polling, last-send diagnostics, and a dashboard card with delivery history and recipient presets. Attachments can be added later once the core send and status flows are working smoothly.
 
 ## Development
 

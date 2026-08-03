@@ -19,6 +19,7 @@ from custom_components.skickamejl.sensor import (
     SkickamejlLastSendSensor,
     _delivery_status,
     _parse_timestamp,
+    is_terminal_delivery_status,
 )
 
 
@@ -74,8 +75,21 @@ def test_delivery_status_mapping() -> None:
     assert _delivery_status(3) == "deferred"
     assert _delivery_status(4) == "bounced"
     assert _delivery_status(5) == "failed"
+    assert _delivery_status("2") == "delivered"
+    assert _delivery_status("Delivered") == "delivered"
     assert _delivery_status(99) == "99"
     assert _delivery_status(None) is None
+
+
+def test_terminal_delivery_status_mapping() -> None:
+    """Only final delivery statuses stop follow-up polling."""
+    assert is_terminal_delivery_status(2) is True
+    assert is_terminal_delivery_status("Delivered") is True
+    assert is_terminal_delivery_status("bounced") is True
+    assert is_terminal_delivery_status("failed") is True
+    assert is_terminal_delivery_status(0) is False
+    assert is_terminal_delivery_status("processing") is False
+    assert is_terminal_delivery_status(None) is False
 
 
 def test_parse_timestamp_handles_zulu_and_invalid_values() -> None:
@@ -119,6 +133,14 @@ def test_last_send_sensor_values_and_attributes() -> None:
         "status": 2,
         "status_name": "delivered",
         "queued_at_utc": "2026-08-03T10:00:00Z",
+        "attempt_count": None,
+        "created_at_utc": None,
+        "last_attempt_at_utc": None,
+        "next_attempt_at_utc": None,
+        "completed_at_utc": None,
+        "last_error": None,
+        "attempts": [],
+        "status_events": [],
     }
 
 
@@ -154,4 +176,12 @@ def test_diagnostics_helpers_summarize_health_and_last_send() -> None:
         "envelope_from": "bounce@example.com",
         "status": 2,
         "queued_at_utc": "2026-08-03T10:00:00Z",
+        "attempt_count": None,
+        "created_at_utc": None,
+        "last_attempt_at_utc": None,
+        "next_attempt_at_utc": None,
+        "completed_at_utc": None,
+        "last_error": None,
+        "attempts": [],
+        "status_events": [],
     }

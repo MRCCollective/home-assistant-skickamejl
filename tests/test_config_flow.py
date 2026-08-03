@@ -1,0 +1,75 @@
+"""Tests for Skickamejl config and options helpers."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+from custom_components.skickamejl.config import config_entry_data
+from custom_components.skickamejl.config_flow import (
+    _normalize_user_input,
+    _validate_normalized_input,
+)
+from custom_components.skickamejl.const import (
+    CONF_API_KEY,
+    CONF_RECIPIENT_ADDRESS,
+    CONF_SENDER_ADDRESS,
+    CONF_SERVER_URL,
+)
+
+
+def test_config_entry_data_merges_options_over_initial_data() -> None:
+    """Options should override the original setup data."""
+    entry = SimpleNamespace(
+        data={
+            CONF_SERVER_URL: "http://old.example.test",
+            CONF_API_KEY: "old-key",
+            CONF_SENDER_ADDRESS: "home@example.com",
+            CONF_RECIPIENT_ADDRESS: "old@example.com",
+        },
+        options={
+            CONF_SERVER_URL: "http://new.example.test",
+            CONF_RECIPIENT_ADDRESS: "new@example.com",
+        },
+    )
+
+    assert config_entry_data(entry) == {
+        CONF_SERVER_URL: "http://new.example.test",
+        CONF_API_KEY: "old-key",
+        CONF_SENDER_ADDRESS: "home@example.com",
+        CONF_RECIPIENT_ADDRESS: "new@example.com",
+    }
+
+
+def test_normalize_user_input_trims_values_and_normalizes_url() -> None:
+    """Config and options input should be normalized before validation/storage."""
+    assert _normalize_user_input(
+        {
+            CONF_SERVER_URL: " localhost:8080/ ",
+            CONF_API_KEY: " secret ",
+            CONF_SENDER_ADDRESS: " home@example.com ",
+            CONF_RECIPIENT_ADDRESS: " you@example.com ",
+        }
+    ) == {
+        CONF_SERVER_URL: "http://localhost:8080",
+        CONF_API_KEY: "secret",
+        CONF_SENDER_ADDRESS: "home@example.com",
+        CONF_RECIPIENT_ADDRESS: "you@example.com",
+    }
+
+
+def test_validate_normalized_input_reports_blank_key_and_invalid_emails() -> None:
+    """Local form validation catches required and email-shaped fields."""
+    errors = _validate_normalized_input(
+        {
+            CONF_SERVER_URL: "http://localhost:8080",
+            CONF_API_KEY: "",
+            CONF_SENDER_ADDRESS: "not-an-email",
+            CONF_RECIPIENT_ADDRESS: "also-bad",
+        }
+    )
+
+    assert errors == {
+        CONF_API_KEY: "required",
+        CONF_SENDER_ADDRESS: "invalid_email",
+        CONF_RECIPIENT_ADDRESS: "invalid_email",
+    }

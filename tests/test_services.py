@@ -138,6 +138,8 @@ async def test_send_email_service_uses_defaults_and_updates_last_send(
             CONF_RECIPIENT_ADDRESS: "default-to@example.com",
             CONF_SENDER_ADDRESS: "default-from@example.com",
         },
+        options={},
+        runtime_data=runtime_data,
     )
     hass = SimpleNamespace(
         data={DOMAIN: {"entry-1": runtime_data}},
@@ -147,8 +149,12 @@ async def test_send_email_service_uses_defaults_and_updates_last_send(
     sent_signals: list[str] = []
 
     monkeypatch.setattr(
-        "custom_components.skickamejl.services.async_dispatcher_send",
+        "custom_components.skickamejl.runtime.async_dispatcher_send",
         lambda _hass, signal: sent_signals.append(signal),
+    )
+    monkeypatch.setattr(
+        "custom_components.skickamejl.runtime.async_start_delivery_polling",
+        lambda _hass, _entry: None,
     )
 
     await async_setup_services(hass)
@@ -186,6 +192,7 @@ async def test_send_email_service_requires_body() -> None:
             CONF_RECIPIENT_ADDRESS: "default-to@example.com",
             CONF_SENDER_ADDRESS: "default-from@example.com",
         },
+        options={},
     )
     hass = SimpleNamespace(
         data={DOMAIN: {"entry-1": runtime_data}},
