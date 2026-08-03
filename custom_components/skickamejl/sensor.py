@@ -15,6 +15,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.network import NoURLAvailableError
@@ -22,9 +23,11 @@ from homeassistant.helpers.network import NoURLAvailableError
 from .api import SkickamejlEmailSendResult
 from .config import config_entry_data
 from .const import (
+    CONF_SERVER_URL,
     CONF_WEBHOOK_ID,
     DOMAIN,
     EVENT_EMAIL,
+    NAME,
     send_result_signal,
     webhook_event_signal,
 )
@@ -117,6 +120,28 @@ WEBHOOK_EVENT_SENSORS: tuple[SkickamejlWebhookEventSensorDescription, ...] = (
 )
 
 
+class SkickamejlSensorEntity(SensorEntity):
+    """Base Skickamejl sensor attached to the config entry device."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        """Initialize the sensor."""
+        self._entry = entry
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for Skickamejl."""
+        data = config_entry_data(self._entry)
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry.entry_id)},
+            name=NAME,
+            manufacturer="Skickamejl",
+            model="Transactional Email API",
+            configuration_url=data.get(CONF_SERVER_URL),
+        )
+
+
 async def async_setup_entry(
     _hass: HomeAssistant,
     entry: ConfigEntry,
@@ -135,10 +160,9 @@ async def async_setup_entry(
     )
 
 
-class SkickamejlLastSendSensor(SensorEntity):
+class SkickamejlLastSendSensor(SkickamejlSensorEntity):
     """A Skickamejl last-send sensor."""
 
-    _attr_has_entity_name = True
     entity_description: SkickamejlLastSendSensorDescription
 
     def __init__(
@@ -147,7 +171,7 @@ class SkickamejlLastSendSensor(SensorEntity):
         description: SkickamejlLastSendSensorDescription,
     ) -> None:
         """Initialize the sensor."""
-        self._entry = entry
+        super().__init__(entry)
         self.entity_description = description
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_{description.key}"
 
@@ -200,17 +224,16 @@ class SkickamejlLastSendSensor(SensorEntity):
         }
 
 
-class SkickamejlWebhookUrlSensor(SensorEntity):
+class SkickamejlWebhookUrlSensor(SkickamejlSensorEntity):
     """A Skickamejl webhook URL sensor."""
 
-    _attr_has_entity_name = True
     _attr_translation_key = "webhook_url"
     _attr_icon = "mdi:webhook"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
-        self._entry = entry
+        super().__init__(entry)
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_webhook_url"
 
     @property
@@ -239,10 +262,9 @@ class SkickamejlWebhookUrlSensor(SensorEntity):
         }
 
 
-class SkickamejlWebhookEventSensor(SensorEntity):
+class SkickamejlWebhookEventSensor(SkickamejlSensorEntity):
     """A Skickamejl latest webhook event sensor."""
 
-    _attr_has_entity_name = True
     entity_description: SkickamejlWebhookEventSensorDescription
 
     def __init__(
@@ -251,7 +273,7 @@ class SkickamejlWebhookEventSensor(SensorEntity):
         description: SkickamejlWebhookEventSensorDescription,
     ) -> None:
         """Initialize the sensor."""
-        self._entry = entry
+        super().__init__(entry)
         self.entity_description = description
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_{description.key}"
 

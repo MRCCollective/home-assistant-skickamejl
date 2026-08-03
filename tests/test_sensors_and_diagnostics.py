@@ -9,6 +9,7 @@ from custom_components.skickamejl.api import (
     SkickamejlConnectionError,
     SkickamejlEmailSendResult,
 )
+from custom_components.skickamejl.const import CONF_SERVER_URL, DOMAIN
 from custom_components.skickamejl.coordinator import SkickamejlHealthCoordinator
 from custom_components.skickamejl.diagnostics import (
     _health_summary,
@@ -172,6 +173,20 @@ def test_last_send_sensor_is_empty_before_first_send() -> None:
 
     assert sensor.native_value is None
     assert sensor.extra_state_attributes is None
+
+
+def test_sensor_entities_are_attached_to_the_config_entry_device() -> None:
+    """Sensors should appear on the same Home Assistant device page."""
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        data={CONF_SERVER_URL: "https://skickamejl.se"},
+        options={},
+        runtime_data=SimpleNamespace(last_send=None),
+    )
+    sensor = SkickamejlLastSendSensor(entry, SENSORS[0])
+
+    assert sensor.device_info["identifiers"] == {(DOMAIN, "entry-1")}
+    assert sensor.device_info["configuration_url"] == "https://skickamejl.se"
 
 
 def test_webhook_event_sensor_values_and_attributes() -> None:

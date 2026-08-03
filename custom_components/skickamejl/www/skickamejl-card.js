@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.0";
+const CARD_VERSION = "0.4.1";
 const CARD_RESOURCE_URL = `/skickamejl_static/skickamejl-card.js?v=${CARD_VERSION}`;
 const ICON_SRC = `/skickamejl_static/skickamejl-icon.png?v=${CARD_VERSION}-icon`;
 const DEFAULT_BACKGROUND = "#f7fbff";
