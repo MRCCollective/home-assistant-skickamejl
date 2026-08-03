@@ -31,8 +31,10 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import SkickamejlHealthCoordinator
+from .events import SkickamejlWebhookEvent
 from .runtime import async_stop_delivery_polling
 from .services import async_setup_services, async_unload_services
+from .webhook import async_setup_webhook, async_unload_webhook, ensure_webhook_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ class SkickamejlRuntimeData:
     api: SkickamejlApiClient
     coordinator: SkickamejlHealthCoordinator
     last_send: SkickamejlEmailSendResult | None = None
+    last_webhook_event: SkickamejlWebhookEvent | None = None
     delivery_poll_task: asyncio.Task[None] | None = None
 
 
@@ -66,6 +69,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
 ) -> bool:
     """Set up Skickamejl from a config entry."""
+    ensure_webhook_id(hass, entry)
     data = config_entry_data(entry)
     api = SkickamejlApiClient(
         async_get_clientsession(hass),
@@ -90,6 +94,7 @@ async def async_setup_entry(
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry.runtime_data
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    await async_setup_webhook(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -101,6 +106,7 @@ async def async_unload_entry(
 ) -> bool:
     """Unload a Skickamejl config entry."""
     await async_stop_delivery_polling(entry)
+    await async_unload_webhook(hass, entry)
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)

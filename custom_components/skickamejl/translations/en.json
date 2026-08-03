@@ -60,6 +60,21 @@
       },
       "last_queued_at": {
         "name": "Last queued at"
+      },
+      "webhook_url": {
+        "name": "Webhook URL"
+      },
+      "last_event_type": {
+        "name": "Last event type"
+      },
+      "last_template_id": {
+        "name": "Last template ID"
+      },
+      "last_webhook_delivery_id": {
+        "name": "Last webhook delivery ID"
+      },
+      "last_webhook_received_at": {
+        "name": "Last webhook received at"
       }
     }
   },

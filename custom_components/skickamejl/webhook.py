@@ -1,0 +1,104 @@
+"""Incoming webhook support for Skickamejl."""
+
+from __future__ import annotations
+
+import logging
+from datetime import UTC, datetime
+from typing import Any
+from uuid import uuid4
+
+from aiohttp import web
+from homeassistant.components import webhook as ha_webhook
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+
+from .config import config_entry_data
+from .const import CONF_WEBHOOK_ID, DOMAIN, EVENT_EMAIL, NAME, webhook_event_signal
+from .events import SkickamejlWebhookEvent
+from .runtime import async_record_send_result
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def ensure_webhook_id(hass: HomeAssistant, entry: ConfigEntry) -> str:
+    """Ensure the config entry has a stable Home Assistant webhook ID."""
+    data = dict(entry.data)
+    webhook_id = data.get(CONF_WEBHOOK_ID)
+    if isinstance(webhook_id, str) and webhook_id:
+        return webhook_id
+
+    webhook_id = f"{DOMAIN}_{uuid4().hex}"
+    data[CONF_WEBHOOK_ID] = webhook_id
+    hass.config_entries.async_update_entry(entry, data=data)
+    return webhook_id
+
+
+async def async_setup_webhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Register the incoming Skickamejl webhook."""
+    webhook_id = config_entry_data(entry)[CONF_WEBHOOK_ID]
+
+    async def _handler(
+        handler_hass: HomeAssistant,
+        _webhook_id: str,
+        request: web.Request,
+    ) -> web.Response:
+        return await _handle_webhook(handler_hass, entry, request)
+
+    ha_webhook.async_register(
+        hass,
+        DOMAIN,
+        f"{NAME} {entry.title}",
+        webhook_id,
+        _handler,
+        local_only=False,
+        allowed_methods=("POST",),
+    )
+
+
+async def async_unload_webhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Unregister the incoming Skickamejl webhook."""
+    webhook_id = config_entry_data(entry).get(CONF_WEBHOOK_ID)
+    if webhook_id:
+        ha_webhook.async_unregister(hass, webhook_id)
+
+
+async def _handle_webhook(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    request: web.Request,
+) -> web.Response:
+    """Handle an incoming Skickamejl event webhook."""
+    try:
+        payload = await request.json()
+    except ValueError:
+        return web.json_response({"error": "invalid_json"}, status=400)
+
+    if not isinstance(payload, dict):
+        return web.json_response({"error": "invalid_payload"}, status=400)
+
+    event = SkickamejlWebhookEvent.from_payload(
+        payload,
+        received_at_utc=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+    )
+    runtime_data = entry.runtime_data
+    runtime_data.last_webhook_event = event
+
+    send_result = event.as_send_result()
+    if send_result is not None:
+        async_record_send_result(hass, entry, send_result)
+
+    event_data: dict[str, Any] = {
+        "entry_id": entry.entry_id,
+        **event.as_event_data(),
+    }
+    hass.bus.async_fire(EVENT_EMAIL, event_data)
+    async_dispatcher_send(hass, webhook_event_signal(entry.entry_id))
+
+    _LOGGER.debug(
+        "Received Skickamejl webhook event %s for template %s and delivery %s",
+        event.event,
+        event.template_id,
+        event.delivery_id,
+    )
+    return web.json_response({"ok": True})

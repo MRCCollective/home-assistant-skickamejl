@@ -13,6 +13,7 @@ from .const import (
     CONF_API_KEY,
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
+    CONF_WEBHOOK_ID,
     DOMAIN,
 )
 
@@ -20,6 +21,7 @@ _TO_REDACT = {
     CONF_API_KEY,
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
+    CONF_WEBHOOK_ID,
 }
 
 
@@ -38,6 +40,7 @@ async def async_get_config_entry_diagnostics(
         "loaded": entry.entry_id in hass.data.get(DOMAIN, {}),
         "health": _health_summary(entry),
         "last_send": _last_send_summary(entry),
+        "last_webhook_event": _last_webhook_event_summary(entry),
     }
 
 
@@ -73,3 +76,27 @@ def _last_send_summary(entry: ConfigEntry) -> dict[str, Any] | None:
         "attempts": list(result.attempts),
         "status_events": list(result.status_events),
     }
+
+
+def _last_webhook_event_summary(entry: ConfigEntry) -> dict[str, Any] | None:
+    """Return latest webhook event diagnostics."""
+    runtime_data = getattr(entry, "runtime_data", None)
+    event = getattr(runtime_data, "last_webhook_event", None)
+    if event is None:
+        return None
+    summary: dict[str, Any] = async_redact_data(
+        event.as_event_data(),
+        {
+            CONF_RECIPIENT_ADDRESS,
+            CONF_SENDER_ADDRESS,
+            "to",
+            "from",
+            "recipient",
+            "recipient_address",
+            "recipientAddress",
+            "sender",
+            "sender_address",
+            "senderAddress",
+        },
+    )
+    return summary

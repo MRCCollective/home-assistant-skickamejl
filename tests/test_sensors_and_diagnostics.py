@@ -13,10 +13,14 @@ from custom_components.skickamejl.coordinator import SkickamejlHealthCoordinator
 from custom_components.skickamejl.diagnostics import (
     _health_summary,
     _last_send_summary,
+    _last_webhook_event_summary,
 )
+from custom_components.skickamejl.events import SkickamejlWebhookEvent
 from custom_components.skickamejl.sensor import (
     SENSORS,
+    WEBHOOK_EVENT_SENSORS,
     SkickamejlLastSendSensor,
+    SkickamejlWebhookEventSensor,
     _delivery_status,
     _parse_timestamp,
     is_terminal_delivery_status,
@@ -48,6 +52,20 @@ def _send_result() -> SkickamejlEmailSendResult:
         envelope_from="bounce@example.com",
         status=2,
         queued_at_utc="2026-08-03T10:00:00Z",
+    )
+
+
+def _webhook_event() -> SkickamejlWebhookEvent:
+    """Return a representative webhook event."""
+    return SkickamejlWebhookEvent.from_payload(
+        {
+            "event": "email.sent",
+            "templateId": "account-created",
+            "deliveryId": "delivery-1",
+            "to": "new.user@example.com",
+            "from": "noreply@example.com",
+        },
+        received_at_utc="2026-08-03T13:00:00Z",
     )
 
 
@@ -156,12 +174,39 @@ def test_last_send_sensor_is_empty_before_first_send() -> None:
     assert sensor.extra_state_attributes is None
 
 
+def test_webhook_event_sensor_values_and_attributes() -> None:
+    """Webhook event sensors read values and attributes from runtime data."""
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        runtime_data=SimpleNamespace(last_webhook_event=_webhook_event()),
+    )
+    template_description = next(
+        description
+        for description in WEBHOOK_EVENT_SENSORS
+        if description.key == "last_template_id"
+    )
+    received_description = next(
+        description
+        for description in WEBHOOK_EVENT_SENSORS
+        if description.key == "last_webhook_received_at"
+    )
+
+    template_sensor = SkickamejlWebhookEventSensor(entry, template_description)
+    received_sensor = SkickamejlWebhookEventSensor(entry, received_description)
+
+    assert template_sensor.native_value == "account-created"
+    assert received_sensor.native_value == datetime(2026, 8, 3, 13, 0, tzinfo=UTC)
+    assert template_sensor.extra_state_attributes["event"] == "email.sent"
+    assert template_sensor.extra_state_attributes["template_id"] == "account-created"
+
+
 def test_diagnostics_helpers_summarize_health_and_last_send() -> None:
     """Diagnostics expose health and last-send metadata without secrets."""
     entry = SimpleNamespace(
         runtime_data=SimpleNamespace(
             coordinator=SimpleNamespace(data=True, last_update_success=True),
             last_send=_send_result(),
+            last_webhook_event=_webhook_event(),
         )
     )
 
@@ -184,4 +229,20 @@ def test_diagnostics_helpers_summarize_health_and_last_send() -> None:
         "last_error": None,
         "attempts": [],
         "status_events": [],
+    }
+    assert _last_webhook_event_summary(entry) == {
+        "event": "email.sent",
+        "template_id": "account-created",
+        "delivery_id": "delivery-1",
+        "recipient_address": "**REDACTED**",
+        "sender_address": "**REDACTED**",
+        "status": "queued",
+        "received_at_utc": "2026-08-03T13:00:00Z",
+        "payload": {
+            "event": "email.sent",
+            "templateId": "account-created",
+            "deliveryId": "delivery-1",
+            "to": "**REDACTED**",
+            "from": "**REDACTED**",
+        },
     }

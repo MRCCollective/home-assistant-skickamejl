@@ -60,6 +60,21 @@
       },
       "last_queued_at": {
         "name": "Senast köad"
+      },
+      "webhook_url": {
+        "name": "Webhook-URL"
+      },
+      "last_event_type": {
+        "name": "Senaste eventtyp"
+      },
+      "last_template_id": {
+        "name": "Senaste template-ID"
+      },
+      "last_webhook_delivery_id": {
+        "name": "Senaste webhook-leverans-ID"
+      },
+      "last_webhook_received_at": {
+        "name": "Senaste webhook mottagen"
       }
     }
   },

@@ -19,7 +19,7 @@
   <img src="https://raw.githubusercontent.com/MRCCollective/home-assistant-skickamejl/main/custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
 </p>
 
-Custom Home Assistant integration for [Skickamejl](https://skickamejl.se), focused first on sending email notifications from automations through the Skickamejl email API.
+Custom Home Assistant integration for [Skickamejl](https://skickamejl.se), focused on monitoring transactional email activity in Home Assistant and optionally sending email notifications from automations.
 
 This repository is prepared for HACS as a custom integration. It is not submitted to the default HACS repository yet.
 
@@ -29,8 +29,10 @@ This repository is prepared for HACS as a custom integration. It is not submitte
 - Options flow for changing backend URL, server API-token, sender address, and default recipient without deleting the integration
 - Native Home Assistant `notify` entity for automation-friendly email notifications
 - Home Assistant action `skickamejl.send_email` for dynamic recipients, senders, text bodies, and HTML bodies
-- Diagnostic entities for backend availability and the last email sent from Home Assistant
-- Delivery-detail polling every 60 seconds after each send until Skickamejl reports a final outcome
+- Incoming webhook for Skickamejl email events, including template IDs
+- Home Assistant event `skickamejl_email_event` for automations triggered by Skickamejl activity
+- Diagnostic entities for backend availability, the latest delivery, and the latest webhook event
+- Delivery-detail polling every 60 seconds after each HA send or webhook event with a delivery ID until Skickamejl reports a final outcome
 - Custom Lovelace card with localized Swedish/English UI, icons, status overview, and delivery history
 - Sends `title` as the email subject and `message` as the plain-text email body
 - Health-check validation against the configured backend during setup
@@ -93,8 +95,13 @@ Sensors:
 - `sensor.skickamejl_last_delivery_id`
 - `sensor.skickamejl_last_message_id`
 - `sensor.skickamejl_last_queued_at`
+- `sensor.skickamejl_webhook_url`
+- `sensor.skickamejl_last_event_type`
+- `sensor.skickamejl_last_template_id`
+- `sensor.skickamejl_last_webhook_delivery_id`
+- `sensor.skickamejl_last_webhook_received_at`
 
-The backend availability sensor checks `GET /api/status` every 60 seconds. The last-send sensors update when Home Assistant successfully sends an email through either `notify.send_message` or `skickamejl.send_email`.
+The backend availability sensor checks `GET /api/status` every 60 seconds. The latest delivery sensors update when Home Assistant sends an email through either `notify.send_message` or `skickamejl.send_email`, and also when Skickamejl posts an incoming webhook event with delivery metadata. The webhook URL sensor stores the URL to copy into Skickamejl in its `webhook_url` attribute.
 
 When a send response includes a `deliveryId`, the integration stores it and polls the Skickamejl detail endpoint every 60 seconds:
 
@@ -113,6 +120,59 @@ Delivery status values follow the Skickamejl backend response:
 - `bounced`
 - `failed`
 
+## Incoming Skickamejl Webhooks
+
+Use this when another app or skickamejl.se sends transactional email and Home Assistant should react to it.
+
+1. Add the Skickamejl integration.
+2. Open the entity attributes for `sensor.skickamejl_webhook_url`.
+3. Copy the `webhook_url` attribute into Skickamejl's webhook/event callback settings.
+
+The webhook URL contains a long random ID and should be treated like a secret. If Home Assistant has no external URL configured, the sensor still exposes `webhook_path` so you can combine it with your own Home Assistant base URL.
+
+Skickamejl should send a JSON `POST` to that URL. The integration accepts both camelCase and snake_case fields:
+
+```json
+{
+  "event": "email.sent",
+  "templateId": "account-created",
+  "deliveryId": "delivery_123",
+  "emailMessageId": "email_123",
+  "messageId": "message_123",
+  "to": "new.user@example.com",
+  "from": "noreply@example.com",
+  "status": "queued",
+  "occurredAtUtc": "2026-08-03T13:00:00Z"
+}
+```
+
+Each accepted webhook fires a Home Assistant event:
+
+```text
+skickamejl_email_event
+```
+
+The event data includes normalized fields such as `event`, `template_id`, `delivery_id`, `message_id`, `recipient_address`, `sender_address`, `status`, `occurred_at_utc`, and `received_at_utc`. The original payload is also available as `payload`.
+
+Trigger on a specific transactional template:
+
+```yaml
+alias: When account-created email is sent
+triggers:
+  - trigger: event
+    event_type: skickamejl_email_event
+conditions:
+  - condition: template
+    value_template: >
+      {{ trigger.event.data.template_id == 'account-created'
+         and trigger.event.data.event == 'email.sent' }}
+actions:
+  - action: persistent_notification.create
+    data:
+      title: "Skickamejl"
+      message: "Account-created email was sent to {{ trigger.event.data.recipient_address }}."
+```
+
 ## Dashboard Card
 
 This repository includes brand assets under `brand/` for HACS and an optional custom Lovelace card under the repository `www/` folder. HACS installs an integration-served copy of the card under `custom_components/skickamejl/www/`.
@@ -120,7 +180,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.3.5
+/skickamejl_static/skickamejl-card.js?v=0.4.0
 ```
 
 Use resource type:
@@ -135,7 +195,7 @@ Then add a manual dashboard card:
 type: custom:skickamejl-card
 ```
 
-The card auto-detects the Skickamejl backend availability entity and last-send sensors. It shows backend status, last delivery status, queued time, delivery ID, message ID, and delivery history from status events.
+The card auto-detects the Skickamejl backend availability entity and latest delivery sensors. It shows backend status, last delivery status, queued time, delivery ID, message ID, and delivery history from status events.
 
 You can also pin exact entity IDs:
 
@@ -153,7 +213,7 @@ show_logo: true
 
 The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, and entity overrides. The card is a status and delivery monitor; test sends belong in Skickamejl itself or in Home Assistant Developer Tools using the `skickamejl.send_email` action. The card uses icon buttons for copying IDs.
 
-Before the first email has been sent, the card shows a compact empty state instead of empty delivery IDs. After the first send, it switches to the status, IDs, and delivery history view.
+Before the first delivery has been recorded, the card shows a compact empty state instead of empty delivery IDs. After the first webhook or HA-initiated send, it switches to the status, IDs, and delivery history view.
 
 When updating the card during development, copy the changed files from `www/` to `custom_components/skickamejl/www/` and reload the browser. If Home Assistant keeps an old cached card, add or change a cache-busting query string on the resource, for example:
 
@@ -250,20 +310,21 @@ triggers:
 actions:
   - action: notify.mobile_app_phone
     data:
-      message: "Skickamejl could not deliver the last Home Assistant email."
+      message: "Skickamejl could not deliver the latest tracked email."
 ```
 
 ## Try It For Real Checklist
 
 1. Confirm `binary_sensor.skickamejl_backend_available` is `on`.
-2. Send a test email from the Skickamejl card.
-3. Watch `sensor.skickamejl_last_delivery_status` move from `queued` or `processing` to a final state.
-4. Open the card and confirm delivery ID, message ID, and delivery history appear.
-5. Change one setting from **Settings -> Devices & services -> Skickamejl -> Configure** and confirm the integration reloads cleanly.
+2. Copy `sensor.skickamejl_webhook_url` -> `webhook_url` into Skickamejl webhook settings.
+3. Trigger a transactional email from your app or skickamejl.se.
+4. Watch `sensor.skickamejl_last_template_id` and `sensor.skickamejl_last_delivery_status` update.
+5. Open the card and confirm delivery ID, message ID, and delivery history appear.
+6. Change one setting from **Settings -> Devices & services -> Skickamejl -> Configure** and confirm the integration reloads cleanly.
 
 ## Current Scope
 
-This version supports native notify emails, a richer `skickamejl.send_email` action, backend health, options flow, delivery-detail polling, last-send diagnostics, and a dashboard card with delivery history. Attachments can be added later once the core send and status flows are working smoothly.
+This version supports incoming Skickamejl webhooks, Home Assistant event triggers, native notify emails, a richer `skickamejl.send_email` action, backend health, options flow, delivery-detail polling, last delivery diagnostics, and a dashboard card with delivery history. Attachments can be added later once the core send and status flows are working smoothly.
 
 ## Development
 

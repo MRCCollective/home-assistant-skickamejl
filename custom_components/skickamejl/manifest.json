@@ -3,10 +3,10 @@
   "name": "Skickamejl",
   "codeowners": ["@MRCCollective"],
   "config_flow": true,
-  "dependencies": ["http"],
+  "dependencies": ["http", "webhook"],
   "documentation": "https://github.com/MRCCollective/home-assistant-skickamejl",
   "iot_class": "cloud_poll",
   "issue_tracker": "https://github.com/MRCCollective/home-assistant-skickamejl/issues",
   "requirements": [],
-  "version": "0.3.5"
+  "version": "0.4.0"
 }
