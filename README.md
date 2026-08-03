@@ -5,10 +5,10 @@
     <img src="https://img.shields.io/github/v/release/MRCCollective/home-assistant-skickamejl?style=for-the-badge" alt="Release">
   </a>
   <a href="https://github.com/MRCCollective/home-assistant-skickamejl/actions/workflows/hacs.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hacs.yml?branch=master&label=HACS&style=for-the-badge" alt="HACS Validation">
+    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hacs.yml?branch=main&label=HACS&style=for-the-badge" alt="HACS Validation">
   </a>
   <a href="https://github.com/MRCCollective/home-assistant-skickamejl/actions/workflows/hassfest.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hassfest.yml?branch=master&label=hassfest&style=for-the-badge" alt="Home Assistant Validation">
+    <img src="https://img.shields.io/github/actions/workflow/status/MRCCollective/home-assistant-skickamejl/hassfest.yml?branch=main&label=hassfest&style=for-the-badge" alt="Home Assistant Validation">
   </a>
   <a href="https://github.com/hacs/integration">
     <img src="https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge" alt="HACS Custom">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MRCCollective/home-assistant-skickamejl/master/custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
+  <img src="https://raw.githubusercontent.com/MRCCollective/home-assistant-skickamejl/main/custom_components/skickamejl/brand/logo_readme.png" alt="Skickamejl logo" width="720">
 </p>
 
 Custom Home Assistant integration for [Skickamejl](https://skickamejl.se), focused first on sending email notifications from automations through the Skickamejl email API.
@@ -120,7 +120,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.3.1
+/skickamejl_static/skickamejl-card.js?v=0.3.2
 ```
 
 Use resource type:
