@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.3";
+const CARD_VERSION = "0.3.4";
 const CARD_RESOURCE_URL = `/skickamejl_static/skickamejl-card.js?v=${CARD_VERSION}`;
 const ICON_SRC = `/skickamejl_static/skickamejl-icon.png?v=${CARD_VERSION}-icon`;
 const DEFAULT_BACKGROUND = "#f7fbff";
@@ -37,8 +37,8 @@ const CARD_TRANSLATIONS = {
     noEmailYet: "No email sent yet",
     noEmailYetDetail: "Send a test email or trigger an automation to start tracking delivery.",
     noValue: "Not available",
-    recipientPreset: "Recipient preset",
-    recipientPresetNone: "Custom recipient",
+    recipientPreset: "Test recipient",
+    recipientPresetNone: "Other recipient",
     requiresSetup: "Skickamejl is not configured yet",
     send: "Send",
     sendFailed: "Email could not be sent",
@@ -92,8 +92,8 @@ const CARD_TRANSLATIONS = {
     noEmailYet: "Ingen e-post skickad än",
     noEmailYetDetail: "Skicka ett testmejl eller kör en automation för att börja följa leveransen.",
     noValue: "Saknas",
-    recipientPreset: "Mottagarförval",
-    recipientPresetNone: "Egen mottagare",
+    recipientPreset: "Testmottagare",
+    recipientPresetNone: "Annan mottagare",
     requiresSetup: "Skickamejl är inte konfigurerat än",
     send: "Skicka",
     sendFailed: "E-post kunde inte skickas",

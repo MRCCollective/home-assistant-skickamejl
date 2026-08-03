@@ -48,8 +48,8 @@ def test_card_contains_swedish_and_english_localization() -> None:
     assert "preferred_language" in source
     assert "Delivery history" in source
     assert "Leveranshistorik" in source
-    assert "Recipient preset" in source
-    assert "Mottagarförval" in source
+    assert "Test recipient" in source
+    assert "Testmottagare" in source
     assert "No email sent yet" in source
     assert "Ingen e-post skickad än" in source
 

@@ -120,7 +120,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.3.3
+/skickamejl_static/skickamejl-card.js?v=0.3.4
 ```
 
 Use resource type:
@@ -151,15 +151,13 @@ theme_mode: auto
 show_logo: true
 show_test_form: true
 recipient_presets:
-  - name: Me
+  - name: Test user
     email: you@example.com
-  - name: Family
-    email: family@example.com
-  - name: Ops
-    email: ops@example.com
+  - name: Developer inbox
+    email: dev@example.com
 ```
 
-The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, test-form visibility, and entity overrides. Recipient presets are configured in YAML and appear as a dropdown that fills the `to` field while still allowing custom recipients. The card uses icon buttons for copying IDs and sending/clearing the test form.
+The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, test-form visibility, and entity overrides. Test recipients are configured in YAML and appear as a dropdown that fills the `to` field while still allowing any recipient address. This is only for the optional dashboard test form; normal transactional email recipients are supplied by your automations or `notify` calls. The card uses icon buttons for copying IDs and sending/clearing the test form.
 
 Before the first email has been sent, the card shows a compact empty state instead of empty delivery IDs. After the first send, it switches to the status, IDs, and delivery history view.
 
