@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.3";
+const CARD_VERSION = "0.4.4";
 const CARD_RESOURCE_URL = `/skickamejl_static/skickamejl-card.js?v=${CARD_VERSION}`;
 const ICON_SRC = `/skickamejl_static/skickamejl-icon.png?v=${CARD_VERSION}-icon`;
 const DEFAULT_BACKGROUND = "#f7fbff";
@@ -16,6 +16,7 @@ const CARD_TRANSLATIONS = {
     background: "Background",
     copied: "Copied",
     copy: "Copy",
+    copyFailed: "Could not copy",
     deliveryId: "Delivery ID",
     deliveryIdEntity: "Delivery ID entity",
     deliveryHistory: "Delivery history",
@@ -59,6 +60,7 @@ const CARD_TRANSLATIONS = {
     background: "Bakgrund",
     copied: "Kopierad",
     copy: "Kopiera",
+    copyFailed: "Kunde inte kopiera",
     deliveryId: "Leverans-ID",
     deliveryIdEntity: "Leverans-ID-entitet",
     deliveryHistory: "Leveranshistorik",
@@ -322,11 +324,39 @@ class SkickamejlCard extends HTMLElement {
       return;
     }
     try {
-      await navigator.clipboard?.writeText(text);
-      this._notice = { type: "success", text: this._t("copied") };
-      this._render();
+      const copied = await this._writeClipboard(text);
+      this._notice = {
+        type: copied ? "success" : "error",
+        text: this._t(copied ? "copied" : "copyFailed"),
+      };
     } catch (_err) {
-      // Clipboard permissions vary between dashboard contexts.
+      this._notice = { type: "error", text: this._t("copyFailed") };
+    }
+    this._render();
+  }
+
+  async _writeClipboard(text) {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    return this._fallbackCopy(text);
+  }
+
+  _fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      return document.execCommand("copy");
+    } finally {
+      textarea.remove();
     }
   }
 

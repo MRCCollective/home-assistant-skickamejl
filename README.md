@@ -180,7 +180,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.4.3
+/skickamejl_static/skickamejl-card.js?v=0.4.4
 ```
 
 Use resource type:

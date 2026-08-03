@@ -48,6 +48,8 @@ def test_card_contains_swedish_and_english_localization() -> None:
 
     assert "CARD_TRANSLATIONS" in source
     assert "Skickamejl är inte konfigurerat än" in source
+    assert "Could not copy" in source
+    assert "Kunde inte kopiera" in source
     assert "languageFromHass" in source
     assert "preferred_language" in source
     assert "Delivery history" in source
@@ -82,6 +84,16 @@ def test_card_auto_detects_swedish_entity_names() -> None:
     assert "senaste_leverans_id" in source
     assert "senaste_meddelande_id" in source
     assert "senast_koad" in source
+
+
+def test_card_has_clipboard_fallback_for_local_home_assistant() -> None:
+    """Local HTTP dashboards may not expose navigator.clipboard."""
+    source = ROOT_CARD.read_text(encoding="utf-8")
+
+    assert "_writeClipboard" in source
+    assert "_fallbackCopy" in source
+    assert "window.isSecureContext" in source
+    assert 'document.execCommand("copy")' in source
 
 
 def test_card_resource_version_matches_docs_and_manifest() -> None:

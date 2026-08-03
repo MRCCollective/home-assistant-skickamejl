@@ -8,5 +8,5 @@
   "iot_class": "cloud_poll",
   "issue_tracker": "https://github.com/MRCCollective/home-assistant-skickamejl/issues",
   "requirements": [],
-  "version": "0.4.3"
+  "version": "0.4.4"
 }
