@@ -41,17 +41,28 @@ def test_card_contains_swedish_and_english_localization() -> None:
     source = ROOT_CARD.read_text(encoding="utf-8")
 
     assert "CARD_TRANSLATIONS" in source
-    assert "Email queued" in source
-    assert "E-post köad" in source
     assert "Skickamejl är inte konfigurerat än" in source
     assert "languageFromHass" in source
     assert "preferred_language" in source
     assert "Delivery history" in source
     assert "Leveranshistorik" in source
-    assert "Test recipient" in source
-    assert "Testmottagare" in source
     assert "No email sent yet" in source
     assert "Ingen e-post skickad än" in source
+
+
+def test_card_does_not_include_test_send_form() -> None:
+    """The card should monitor delivery status instead of sending test email."""
+    source = ROOT_CARD.read_text(encoding="utf-8")
+
+    assert "callService" not in source
+    assert "show_test_form" not in source
+    assert "_sendTestEmail" not in source
+    assert "test-form" not in source
+    assert "form-to" not in source
+    assert "form-subject" not in source
+    assert "form-body" not in source
+    assert "form-from" not in source
+    assert "recipient-preset" not in source
 
 
 def test_card_auto_detects_swedish_entity_names() -> None:

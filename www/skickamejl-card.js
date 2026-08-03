@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.4";
+const CARD_VERSION = "0.3.5";
 const CARD_RESOURCE_URL = `/skickamejl_static/skickamejl-card.js?v=${CARD_VERSION}`;
 const ICON_SRC = `/skickamejl_static/skickamejl-icon.png?v=${CARD_VERSION}-icon`;
 const DEFAULT_BACKGROUND = "#f7fbff";
@@ -14,15 +14,12 @@ const CARD_TRANSLATIONS = {
     backendUnknown: "Unknown",
     backendEntity: "Backend entity",
     background: "Background",
-    clear: "Clear",
     copied: "Copied",
     copy: "Copy",
     deliveryId: "Delivery ID",
     deliveryIdEntity: "Delivery ID entity",
     deliveryHistory: "Delivery history",
-    emailBody: "Message",
     entityUnavailable: "Entity unavailable",
-    from: "From",
     language: "Language",
     languageAuto: "Automatic",
     languageEnglish: "English",
@@ -37,14 +34,8 @@ const CARD_TRANSLATIONS = {
     noEmailYet: "No email sent yet",
     noEmailYetDetail: "Send a test email or trigger an automation to start tracking delivery.",
     noValue: "Not available",
-    recipientPreset: "Test recipient",
-    recipientPresetNone: "Other recipient",
     requiresSetup: "Skickamejl is not configured yet",
-    send: "Send",
-    sendFailed: "Email could not be sent",
-    sendSucceeded: "Email queued",
     showLogo: "Show logo",
-    showTestForm: "Show test form",
     status: "Status",
     statusBounced: "Bounced",
     statusDelivered: "Delivered",
@@ -54,13 +45,10 @@ const CARD_TRANSLATIONS = {
     statusProcessing: "Processing",
     statusQueued: "Queued",
     statusUnknown: "Unknown",
-    subject: "Subject",
-    testEmail: "Test email",
     theme: "Theme",
     themeAuto: "Automatic",
     themeDark: "Dark",
     themeLight: "Light",
-    to: "To",
   },
   sv: {
     backend: "Backend",
@@ -69,15 +57,12 @@ const CARD_TRANSLATIONS = {
     backendUnknown: "Okänd",
     backendEntity: "Backend-entitet",
     background: "Bakgrund",
-    clear: "Rensa",
     copied: "Kopierad",
     copy: "Kopiera",
     deliveryId: "Leverans-ID",
     deliveryIdEntity: "Leverans-ID-entitet",
     deliveryHistory: "Leveranshistorik",
-    emailBody: "Meddelande",
     entityUnavailable: "Entitet saknas",
-    from: "Från",
     language: "Språk",
     languageAuto: "Automatiskt",
     languageEnglish: "English",
@@ -92,14 +77,8 @@ const CARD_TRANSLATIONS = {
     noEmailYet: "Ingen e-post skickad än",
     noEmailYetDetail: "Skicka ett testmejl eller kör en automation för att börja följa leveransen.",
     noValue: "Saknas",
-    recipientPreset: "Testmottagare",
-    recipientPresetNone: "Annan mottagare",
     requiresSetup: "Skickamejl är inte konfigurerat än",
-    send: "Skicka",
-    sendFailed: "E-post kunde inte skickas",
-    sendSucceeded: "E-post köad",
     showLogo: "Visa logotyp",
-    showTestForm: "Visa testformulär",
     status: "Status",
     statusBounced: "Studsad",
     statusDelivered: "Levererad",
@@ -109,13 +88,10 @@ const CARD_TRANSLATIONS = {
     statusProcessing: "Bearbetas",
     statusQueued: "Köad",
     statusUnknown: "Okänd",
-    subject: "Ämne",
-    testEmail: "Testa e-post",
     theme: "Tema",
     themeAuto: "Automatiskt",
     themeDark: "Mörkt",
     themeLight: "Ljust",
-    to: "Till",
   },
 };
 
@@ -240,18 +216,6 @@ function findSkickamejlEntities(hass, config = {}) {
   };
 }
 
-function normalizeRecipientPresets(presets) {
-  if (!Array.isArray(presets)) {
-    return [];
-  }
-  return presets
-    .map((preset) => ({
-      name: String(preset?.name ?? preset?.label ?? preset?.email ?? "").trim(),
-      email: String(preset?.email ?? preset?.address ?? "").trim(),
-    }))
-    .filter((preset) => preset.name && preset.email);
-}
-
 class SkickamejlCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("skickamejl-card-editor");
@@ -270,8 +234,6 @@ class SkickamejlCard extends HTMLElement {
       theme_mode: "auto",
       background_color: DEFAULT_BACKGROUND,
       show_logo: true,
-      show_test_form: true,
-      recipient_presets: [],
     };
   }
 
@@ -281,23 +243,13 @@ class SkickamejlCard extends HTMLElement {
       theme_mode: "auto",
       background_color: DEFAULT_BACKGROUND,
       show_logo: true,
-      show_test_form: true,
-      recipient_presets: [],
       ...config,
       preferred_language: normalizeLanguageMode(config.preferred_language),
       theme_mode: normalizeThemeMode(config.theme_mode, config.dark_mode),
-      recipient_presets: normalizeRecipientPresets(config.recipient_presets),
     };
     delete this._config.dark_mode;
-    this._busy = false;
     this._notice = undefined;
     this._lastSignature = "";
-    this._form = {
-      to: "",
-      from: "",
-      subject: "",
-      body: "",
-    };
     if (!this.shadowRoot) {
       this.attachShadow({ mode: "open" });
     }
@@ -313,7 +265,7 @@ class SkickamejlCard extends HTMLElement {
   }
 
   getCardSize() {
-    return this._config?.show_test_form ? 5 : 3;
+    return 3;
   }
 
   _entities() {
@@ -330,10 +282,6 @@ class SkickamejlCard extends HTMLElement {
 
   _t(key) {
     return localize(this._language(), key);
-  }
-
-  _recipientPresets() {
-    return normalizeRecipientPresets(this._config.recipient_presets);
   }
 
   _isDarkMode() {
@@ -357,7 +305,6 @@ class SkickamejlCard extends HTMLElement {
       dark: this._isDarkMode(),
       config: this._config,
       notice: this._notice,
-      busy: this._busy,
       states: Object.values(entities).map((entityId) => {
         const state = this._state(entityId);
         return {
@@ -367,40 +314,6 @@ class SkickamejlCard extends HTMLElement {
         };
       }),
     });
-  }
-
-  async _sendTestEmail() {
-    const subject = this._form.subject.trim();
-    const textBody = this._form.body.trim();
-    if (!this._hass || !subject || !textBody || this._busy) {
-      return;
-    }
-
-    const payload = {
-      subject,
-      text_body: textBody,
-    };
-    if (this._form.to.trim()) {
-      payload.to = this._form.to.trim();
-    }
-    if (this._form.from.trim()) {
-      payload.from = this._form.from.trim();
-    }
-
-    this._busy = true;
-    this._notice = undefined;
-    this._render();
-    try {
-      await this._hass.callService("skickamejl", "send_email", payload);
-      this._notice = { type: "success", text: this._t("sendSucceeded") };
-      this._form.subject = "";
-      this._form.body = "";
-    } catch (_err) {
-      this._notice = { type: "error", text: this._t("sendFailed") };
-    } finally {
-      this._busy = false;
-      this._render();
-    }
   }
 
   async _copy(value) {
@@ -454,11 +367,9 @@ class SkickamejlCard extends HTMLElement {
                     ${this._copyRow("mdi:email-outline", this._t("messageId"), messageId?.state, messageId?.entity_id)}
                   </div>
                   ${this._historyTemplate(status?.attributes)}
-                  ${this._config.show_test_form ? this._testFormTemplate() : ""}
                 `
                 : `
                   ${this._emptyStateTemplate()}
-                  ${this._config.show_test_form ? this._testFormTemplate() : ""}
                 `
               : this._setupTemplate()
           }
@@ -614,68 +525,6 @@ class SkickamejlCard extends HTMLElement {
     `;
   }
 
-  _testFormTemplate() {
-    const disabled = this._busy ? "disabled" : "";
-    const sendDisabled = this._busy || !this._form.subject.trim() || !this._form.body.trim() ? "disabled" : "";
-    const recipientPresets = this._recipientPresets();
-    return `
-      <form class="test-form">
-        <div class="form-header">
-          <ha-icon icon="mdi:email-edit-outline"></ha-icon>
-          <span>${this._escape(this._t("testEmail"))}</span>
-        </div>
-        ${
-          recipientPresets.length
-            ? `
-              <label>
-                <span>${this._escape(this._t("recipientPreset"))}</span>
-                <select class="recipient-preset" ${disabled}>
-                  <option value="">${this._escape(this._t("recipientPresetNone"))}</option>
-                  ${recipientPresets
-                    .map(
-                      (preset) => `
-                        <option value="${this._escape(preset.email)}" ${this._form.to === preset.email ? "selected" : ""}>
-                          ${this._escape(preset.name)}
-                        </option>
-                      `,
-                    )
-                    .join("")}
-                </select>
-              </label>
-            `
-            : ""
-        }
-        <div class="field-grid">
-          <label>
-            <span>${this._escape(this._t("to"))}</span>
-            <input class="form-to" type="email" autocomplete="email" value="${this._escape(this._form.to)}" ${disabled}>
-          </label>
-          <label>
-            <span>${this._escape(this._t("from"))}</span>
-            <input class="form-from" type="email" value="${this._escape(this._form.from)}" ${disabled}>
-          </label>
-        </div>
-        <label>
-          <span>${this._escape(this._t("subject"))}</span>
-          <input class="form-subject" value="${this._escape(this._form.subject)}" ${disabled}>
-        </label>
-        <label>
-          <span>${this._escape(this._t("emailBody"))}</span>
-          <textarea class="form-body" rows="4" ${disabled}>${this._escape(this._form.body)}</textarea>
-        </label>
-        <div class="form-actions">
-          <button class="secondary clear" type="button" title="${this._escape(this._t("clear"))}" ${disabled}>
-            <ha-icon icon="mdi:eraser"></ha-icon>
-          </button>
-          <button class="primary send" type="submit" ${sendDisabled}>
-            <ha-icon icon="${this._busy ? "mdi:loading" : "mdi:send"}"></ha-icon>
-            <span>${this._escape(this._t("send"))}</span>
-          </button>
-        </div>
-      </form>
-    `;
-  }
-
   _setupTemplate() {
     return `
       <div class="setup">
@@ -704,33 +553,6 @@ class SkickamejlCard extends HTMLElement {
   _bindEvents() {
     this.shadowRoot.querySelectorAll("[data-copy]").forEach((button) => {
       button.addEventListener("click", () => this._copy(button.dataset.copy));
-    });
-    this.shadowRoot.querySelector(".test-form")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      this._sendTestEmail();
-    });
-    this.shadowRoot.querySelector(".clear")?.addEventListener("click", () => {
-      this._form = { to: "", from: "", subject: "", body: "" };
-      this._notice = undefined;
-      this._render();
-    });
-    this.shadowRoot.querySelector(".recipient-preset")?.addEventListener("change", (event) => {
-      this._form.to = event.target.value;
-      this._render();
-    });
-    this.shadowRoot.querySelector(".form-to")?.addEventListener("input", (event) => {
-      this._form.to = event.target.value;
-    });
-    this.shadowRoot.querySelector(".form-from")?.addEventListener("input", (event) => {
-      this._form.from = event.target.value;
-    });
-    this.shadowRoot.querySelector(".form-subject")?.addEventListener("input", (event) => {
-      this._form.subject = event.target.value;
-      this._render();
-    });
-    this.shadowRoot.querySelector(".form-body")?.addEventListener("input", (event) => {
-      this._form.body = event.target.value;
-      this._render();
     });
   }
 
@@ -827,8 +649,6 @@ class SkickamejlCard extends HTMLElement {
         .backend,
         .tile,
         .copy-row,
-        .form-header,
-        .form-actions,
         .notice,
         .empty-state,
         .setup {
@@ -921,8 +741,7 @@ class SkickamejlCard extends HTMLElement {
           font-weight: 700;
         }
         .details,
-        .history,
-        .test-form {
+        .history {
           display: grid;
           gap: 8px;
         }
@@ -1053,61 +872,8 @@ class SkickamejlCard extends HTMLElement {
           width: 36px;
         }
         .icon-button:not(:disabled):hover,
-        .secondary:not(:disabled):hover {
+        button:not(:disabled):hover {
           background: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
-        }
-        .test-form {
-          border-top: 1px solid var(--skickamejl-line);
-          padding-top: 10px;
-        }
-        .form-header {
-          gap: 8px;
-          font-weight: 800;
-        }
-        .field-grid {
-          display: grid;
-          gap: 8px;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        label {
-          display: grid;
-          gap: 4px;
-          min-width: 0;
-        }
-        input,
-        textarea,
-        select {
-          background: var(--card-background-color);
-          border: 1px solid var(--skickamejl-line);
-          border-radius: 8px;
-          box-sizing: border-box;
-          color: var(--primary-text-color);
-          font: inherit;
-          min-height: 38px;
-          padding: 8px 10px;
-          width: 100%;
-        }
-        textarea {
-          min-height: 96px;
-          resize: vertical;
-        }
-        .form-actions {
-          justify-content: flex-end;
-          gap: 8px;
-        }
-        .secondary {
-          border: 1px solid var(--skickamejl-line);
-          width: 38px;
-        }
-        .primary {
-          background: #0078b8;
-          color: #fff;
-          gap: 8px;
-          min-width: 108px;
-          padding: 0 14px;
-        }
-        .primary ha-icon[icon="mdi:loading"] {
-          animation: skickamejl-spin 1s linear infinite;
         }
         .notice {
           border-radius: 8px;
@@ -1137,20 +903,11 @@ class SkickamejlCard extends HTMLElement {
           font-weight: 800;
         }
         @media (max-width: 420px) {
-          .summary,
-          .field-grid {
+          .summary {
             grid-template-columns: 1fr;
           }
           .backend span {
             display: none;
-          }
-        }
-        @keyframes skickamejl-spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
           }
         }
       </style>
@@ -1165,12 +922,9 @@ class SkickamejlCardEditor extends HTMLElement {
       theme_mode: "auto",
       background_color: DEFAULT_BACKGROUND,
       show_logo: true,
-      show_test_form: true,
-      recipient_presets: [],
       ...config,
       preferred_language: normalizeLanguageMode(config.preferred_language),
       theme_mode: normalizeThemeMode(config.theme_mode, config.dark_mode),
-      recipient_presets: normalizeRecipientPresets(config.recipient_presets),
     };
     delete this._config.dark_mode;
     if (!this.shadowRoot) {
@@ -1244,10 +998,6 @@ class SkickamejlCardEditor extends HTMLElement {
         <label class="toggle">
           <span>${this._escape(this._t("showLogo"))}</span>
           <input class="show-logo" type="checkbox" ${this._config.show_logo ? "checked" : ""}>
-        </label>
-        <label class="toggle">
-          <span>${this._escape(this._t("showTestForm"))}</span>
-          <input class="show-test-form" type="checkbox" ${this._config.show_test_form ? "checked" : ""}>
         </label>
       </div>
       <style>
@@ -1336,9 +1086,6 @@ class SkickamejlCardEditor extends HTMLElement {
     });
     this.shadowRoot.querySelector(".show-logo")?.addEventListener("change", (event) => {
       this._updateConfig({ show_logo: event.target.checked });
-    });
-    this.shadowRoot.querySelector(".show-test-form")?.addEventListener("change", (event) => {
-      this._updateConfig({ show_test_form: event.target.checked });
     });
   }
 
