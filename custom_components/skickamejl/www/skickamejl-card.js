@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.2";
+const CARD_VERSION = "0.3.3";
 const CARD_RESOURCE_URL = `/skickamejl_static/skickamejl-card.js?v=${CARD_VERSION}`;
 const ICON_SRC = `/skickamejl_static/skickamejl-icon.png?v=${CARD_VERSION}-icon`;
 const DEFAULT_BACKGROUND = "#f7fbff";
@@ -158,29 +158,85 @@ function localize(language, key) {
   return CARD_TRANSLATIONS[language]?.[key] ?? CARD_TRANSLATIONS[DEFAULT_LANGUAGE][key] ?? key;
 }
 
-function isSkickamejlEntity(hass, entityId) {
-  return Boolean(entityId && hass?.states?.[entityId] && entityId.includes("skickamejl"));
+function normalizeEntityText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s-]+/g, "_");
 }
 
-function findEntity(hass, preferredEntityId, suffix, domainPrefix) {
-  if (isSkickamejlEntity(hass, preferredEntityId)) {
+function isDomainEntity(entityId, domainPrefix) {
+  return String(entityId ?? "").startsWith(domainPrefix);
+}
+
+function entityFriendlyName(hass, entityId) {
+  return hass?.states?.[entityId]?.attributes?.friendly_name ?? "";
+}
+
+function isSkickamejlEntity(hass, entityId) {
+  if (!entityId || !hass?.states?.[entityId]) {
+    return false;
+  }
+  const normalizedEntityId = normalizeEntityText(entityId);
+  const normalizedName = normalizeEntityText(entityFriendlyName(hass, entityId));
+  return normalizedEntityId.includes("skickamejl") || normalizedName.includes("skickamejl");
+}
+
+function entityMatchesLabels(hass, entityId, labels) {
+  const normalizedEntityId = normalizeEntityText(entityId);
+  const normalizedName = normalizeEntityText(entityFriendlyName(hass, entityId));
+  return labels.some((label) => {
+    const normalizedLabel = normalizeEntityText(label);
+    return normalizedEntityId.includes(normalizedLabel) || normalizedName.includes(normalizedLabel);
+  });
+}
+
+function findEntity(hass, preferredEntityId, labels, domainPrefix) {
+  if (preferredEntityId && hass?.states?.[preferredEntityId] && isDomainEntity(preferredEntityId, domainPrefix)) {
     return preferredEntityId;
   }
-  return Object.keys(hass?.states ?? {}).find(
+
+  const entityIds = Object.keys(hass?.states ?? {}).filter((entityId) => isDomainEntity(entityId, domainPrefix));
+  return entityIds.find(
     (entityId) =>
-      entityId.startsWith(domainPrefix) &&
-      entityId.includes("skickamejl") &&
-      entityId.includes(suffix),
-  );
+      isSkickamejlEntity(hass, entityId) &&
+      entityMatchesLabels(hass, entityId, labels),
+  ) ?? entityIds.find((entityId) => entityMatchesLabels(hass, entityId, labels));
 }
 
 function findSkickamejlEntities(hass, config = {}) {
   return {
-    backend: findEntity(hass, config.backend_entity, "backend_available", "binary_sensor."),
-    status: findEntity(hass, config.status_entity, "last_delivery_status", "sensor."),
-    deliveryId: findEntity(hass, config.delivery_id_entity, "last_delivery_id", "sensor."),
-    messageId: findEntity(hass, config.message_id_entity, "last_message_id", "sensor."),
-    queuedAt: findEntity(hass, config.queued_at_entity, "last_queued_at", "sensor."),
+    backend: findEntity(
+      hass,
+      config.backend_entity,
+      ["backend_available", "backend_tillganglig", "backend tillganglig"],
+      "binary_sensor.",
+    ),
+    status: findEntity(
+      hass,
+      config.status_entity,
+      ["last_delivery_status", "senaste_leveransstatus", "senaste leveransstatus"],
+      "sensor.",
+    ),
+    deliveryId: findEntity(
+      hass,
+      config.delivery_id_entity,
+      ["last_delivery_id", "senaste_leverans_id", "senaste leverans id"],
+      "sensor.",
+    ),
+    messageId: findEntity(
+      hass,
+      config.message_id_entity,
+      ["last_message_id", "senaste_meddelande_id", "senaste meddelande id"],
+      "sensor.",
+    ),
+    queuedAt: findEntity(
+      hass,
+      config.queued_at_entity,
+      ["last_queued_at", "senast_koad", "senast koad", "senaste_koad", "senaste koad"],
+      "sensor.",
+    ),
   };
 }
 

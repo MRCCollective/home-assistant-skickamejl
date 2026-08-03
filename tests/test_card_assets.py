@@ -54,6 +54,19 @@ def test_card_contains_swedish_and_english_localization() -> None:
     assert "Ingen e-post skickad än" in source
 
 
+def test_card_auto_detects_swedish_entity_names() -> None:
+    """The card should find entities created with Swedish display names."""
+    source = ROOT_CARD.read_text(encoding="utf-8")
+
+    assert "normalizeEntityText" in source
+    assert "entityFriendlyName" in source
+    assert "backend_tillganglig" in source
+    assert "senaste_leveransstatus" in source
+    assert "senaste_leverans_id" in source
+    assert "senaste_meddelande_id" in source
+    assert "senast_koad" in source
+
+
 def test_card_resource_version_matches_docs_and_manifest() -> None:
     """The card version should match README resource docs and manifest version."""
     source = ROOT_CARD.read_text(encoding="utf-8")
