@@ -26,9 +26,15 @@ def test_card_registers_custom_card_and_editor() -> None:
     """The dashboard card registers its element, editor, and card picker metadata."""
     source = ROOT_CARD.read_text(encoding="utf-8")
 
+    assert 'if (!customElements.get("skickamejl-card"))' in source
     assert 'customElements.define("skickamejl-card", SkickamejlCard)' in source
+    assert 'if (!customElements.get("skickamejl-card-editor"))' in source
     assert (
         'customElements.define("skickamejl-card-editor", SkickamejlCardEditor)'
+        in source
+    )
+    assert (
+        '!window.customCards.some((card) => card.type === "skickamejl-card")'
         in source
     )
     assert 'type: "skickamejl-card"' in source

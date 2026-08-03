@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.4.1";
+const CARD_VERSION = "0.4.2";
 const CARD_RESOURCE_URL = `/skickamejl_static/skickamejl-card.js?v=${CARD_VERSION}`;
 const ICON_SRC = `/skickamejl_static/skickamejl-icon.png?v=${CARD_VERSION}-icon`;
 const DEFAULT_BACKGROUND = "#f7fbff";
@@ -1099,24 +1099,31 @@ class SkickamejlCardEditor extends HTMLElement {
   }
 }
 
-customElements.define("skickamejl-card", SkickamejlCard);
-customElements.define("skickamejl-card-editor", SkickamejlCardEditor);
+if (!customElements.get("skickamejl-card")) {
+  customElements.define("skickamejl-card", SkickamejlCard);
+}
+
+if (!customElements.get("skickamejl-card-editor")) {
+  customElements.define("skickamejl-card-editor", SkickamejlCardEditor);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "skickamejl-card",
-  name: "Skickamejl Card",
-  description: "Show Skickamejl backend status and last email delivery details.",
-  documentationURL: "https://github.com/MRCCollective/home-assistant-skickamejl",
-  image: ICON_SRC,
-  logo: ICON_SRC,
-  preview: true,
-  getEntitySuggestion: (hass, entityId) => {
-    if (!isSkickamejlEntity(hass, entityId)) {
-      return null;
-    }
-    return {
-      config: SkickamejlCard.getStubConfig(hass),
-    };
-  },
-});
+if (!window.customCards.some((card) => card.type === "skickamejl-card")) {
+  window.customCards.push({
+    type: "skickamejl-card",
+    name: "Skickamejl Card",
+    description: "Show Skickamejl backend status and last email delivery details.",
+    documentationURL: "https://github.com/MRCCollective/home-assistant-skickamejl",
+    image: ICON_SRC,
+    logo: ICON_SRC,
+    preview: true,
+    getEntitySuggestion: (hass, entityId) => {
+      if (!isSkickamejlEntity(hass, entityId)) {
+        return null;
+      }
+      return {
+        config: SkickamejlCard.getStubConfig(hass),
+      };
+    },
+  });
+}
