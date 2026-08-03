@@ -34,7 +34,12 @@ from .coordinator import SkickamejlHealthCoordinator
 from .events import SkickamejlWebhookEvent
 from .runtime import async_stop_delivery_polling
 from .services import async_setup_services, async_unload_services
-from .webhook import async_setup_webhook, async_unload_webhook, ensure_webhook_id
+from .webhook import (
+    async_remove_cloudhook,
+    async_setup_webhook,
+    async_unload_webhook,
+    ensure_webhook_id,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,8 +118,9 @@ async def async_unload_entry(
     return bool(unload_ok)
 
 
-async def async_remove_entry(hass: HomeAssistant, _entry: ConfigEntry) -> None:
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle removal of a Skickamejl config entry."""
+    await async_remove_cloudhook(hass, entry)
     if not hass.config_entries.async_entries(DOMAIN):
         await async_unload_services(hass)
 

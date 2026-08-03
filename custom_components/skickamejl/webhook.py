@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -14,7 +15,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .config import config_entry_data
-from .const import CONF_WEBHOOK_ID, DOMAIN, EVENT_EMAIL, NAME, webhook_event_signal
+from .const import (
+    CONF_CLOUDHOOK_URL,
+    CONF_WEBHOOK_ID,
+    DOMAIN,
+    EVENT_EMAIL,
+    NAME,
+    webhook_event_signal,
+)
 from .events import SkickamejlWebhookEvent
 from .runtime import async_record_send_result
 
@@ -54,6 +62,7 @@ async def async_setup_webhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
         local_only=False,
         allowed_methods=("POST",),
     )
+    await async_setup_cloudhook(hass, entry)
 
 
 async def async_unload_webhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -61,6 +70,60 @@ async def async_unload_webhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
     webhook_id = config_entry_data(entry).get(CONF_WEBHOOK_ID)
     if webhook_id:
         ha_webhook.async_unregister(hass, webhook_id)
+
+
+async def async_setup_cloudhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Create a Home Assistant Cloud URL for the webhook when available."""
+    cloud = _cloud_component()
+    if cloud is None:
+        return
+
+    try:
+        if not (
+            cloud.async_active_subscription(hass) and cloud.async_is_connected(hass)
+        ):
+            return
+
+        webhook_id = config_entry_data(entry)[CONF_WEBHOOK_ID]
+        cloudhook_url = await cloud.async_get_or_create_cloudhook(hass, webhook_id)
+    except Exception as err:
+        _LOGGER.debug("Could not create Skickamejl cloudhook URL: %s", err)
+        return
+
+    if config_entry_data(entry).get(CONF_CLOUDHOOK_URL) == cloudhook_url:
+        return
+
+    hass.config_entries.async_update_entry(
+        entry,
+        data={**dict(entry.data), CONF_CLOUDHOOK_URL: cloudhook_url},
+    )
+
+
+async def async_remove_cloudhook(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove the Home Assistant Cloud URL for the webhook when possible."""
+    cloudhook_url = config_entry_data(entry).get(CONF_CLOUDHOOK_URL)
+    if not cloudhook_url:
+        return
+
+    cloud = _cloud_component()
+    if cloud is None:
+        return
+
+    with suppress(Exception):
+        await cloud.async_delete_cloudhook(
+            hass,
+            config_entry_data(entry)[CONF_WEBHOOK_ID],
+        )
+
+
+def _cloud_component() -> Any | None:
+    """Return Home Assistant Cloud helpers if available."""
+    try:
+        from homeassistant.components import cloud  # noqa: PLC0415
+    except Exception:
+        return None
+
+    return cloud
 
 
 async def _handle_webhook(

@@ -9,7 +9,12 @@ from custom_components.skickamejl.api import (
     SkickamejlConnectionError,
     SkickamejlEmailSendResult,
 )
-from custom_components.skickamejl.const import CONF_SERVER_URL, DOMAIN
+from custom_components.skickamejl.const import (
+    CONF_CLOUDHOOK_URL,
+    CONF_SERVER_URL,
+    CONF_WEBHOOK_ID,
+    DOMAIN,
+)
 from custom_components.skickamejl.coordinator import SkickamejlHealthCoordinator
 from custom_components.skickamejl.diagnostics import (
     _health_summary,
@@ -22,7 +27,9 @@ from custom_components.skickamejl.sensor import (
     WEBHOOK_EVENT_SENSORS,
     SkickamejlLastSendSensor,
     SkickamejlWebhookEventSensor,
+    SkickamejlWebhookUrlSensor,
     _delivery_status,
+    _is_likely_public_url,
     _parse_timestamp,
     is_terminal_delivery_status,
 )
@@ -187,6 +194,42 @@ def test_sensor_entities_are_attached_to_the_config_entry_device() -> None:
 
     assert sensor.device_info["identifiers"] == {(DOMAIN, "entry-1")}
     assert sensor.device_info["configuration_url"] == "https://skickamejl.se"
+
+
+def test_webhook_url_sensor_prefers_cloudhook_url(monkeypatch) -> None:
+    """The copy URL should use Nabu Casa cloudhooks when available."""
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        data={
+            CONF_WEBHOOK_ID: "skickamejl_hook",
+            CONF_CLOUDHOOK_URL: "https://hooks.nabu.casa/cloud-hook",
+        },
+        options={},
+    )
+    sensor = SkickamejlWebhookUrlSensor(entry)
+    sensor.hass = SimpleNamespace()
+    monkeypatch.setattr(
+        "custom_components.skickamejl.sensor.ha_webhook.async_generate_url",
+        lambda *_args, **_kwargs: "http://192.168.50.227:8123/api/webhook/hook",
+    )
+
+    attributes = sensor.extra_state_attributes
+
+    assert attributes["webhook_url"] == "https://hooks.nabu.casa/cloud-hook"
+    assert attributes["cloudhook_url"] == "https://hooks.nabu.casa/cloud-hook"
+    assert attributes["copy_to_skickamejl"] == "https://hooks.nabu.casa/cloud-hook"
+    assert attributes["url_source"] == "nabu_casa_cloudhook"
+    assert attributes["internet_reachable"] is True
+
+
+def test_public_url_detection_handles_local_and_public_hosts() -> None:
+    """Webhook hints should distinguish local and public-looking URLs."""
+    assert _is_likely_public_url("http://192.168.50.227:8123/api/webhook/id") is False
+    assert (
+        _is_likely_public_url("http://homeassistant.local:8123/api/webhook/id")
+        is False
+    )
+    assert _is_likely_public_url("https://hooks.nabu.casa/id") is True
 
 
 def test_webhook_event_sensor_values_and_attributes() -> None:

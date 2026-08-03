@@ -7,11 +7,17 @@ from types import SimpleNamespace
 from typing import Any
 
 from custom_components.skickamejl.const import (
+    CONF_CLOUDHOOK_URL,
+    CONF_WEBHOOK_ID,
     EVENT_EMAIL,
     webhook_event_signal,
 )
 from custom_components.skickamejl.events import SkickamejlWebhookEvent
-from custom_components.skickamejl.webhook import _handle_webhook, ensure_webhook_id
+from custom_components.skickamejl.webhook import (
+    _handle_webhook,
+    async_setup_cloudhook,
+    ensure_webhook_id,
+)
 
 
 class FakeBus:
@@ -149,3 +155,39 @@ def test_ensure_webhook_id_reuses_existing_id() -> None:
 
     assert ensure_webhook_id(hass, entry) == "skickamejl_existing"
     assert config_entries.updated_data is None
+
+
+async def test_setup_cloudhook_stores_cloudhook_url(monkeypatch: Any) -> None:
+    """Cloudhook setup should store the public Nabu Casa URL on the entry."""
+
+    class FakeCloud:
+        @staticmethod
+        def async_active_subscription(_hass: Any) -> bool:
+            return True
+
+        @staticmethod
+        def async_is_connected(_hass: Any) -> bool:
+            return True
+
+        @staticmethod
+        async def async_get_or_create_cloudhook(
+            _hass: Any,
+            webhook_id: str,
+        ) -> str:
+            return f"https://hooks.nabu.casa/{webhook_id}"
+
+    config_entries = FakeConfigEntries()
+    hass = SimpleNamespace(config_entries=config_entries)
+    entry = SimpleNamespace(data={CONF_WEBHOOK_ID: "skickamejl_existing"})
+
+    monkeypatch.setattr(
+        "custom_components.skickamejl.webhook._cloud_component",
+        lambda: FakeCloud,
+    )
+
+    await async_setup_cloudhook(hass, entry)
+
+    assert (
+        config_entries.updated_data[CONF_CLOUDHOOK_URL]
+        == "https://hooks.nabu.casa/skickamejl_existing"
+    )

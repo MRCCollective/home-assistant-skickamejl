@@ -126,9 +126,9 @@ Use this when another app or skickamejl.se sends transactional email and Home As
 
 1. Add the Skickamejl integration.
 2. Open the entity attributes for `sensor.skickamejl_webhook_url`.
-3. Copy the `webhook_url` attribute into Skickamejl's webhook/event callback settings.
+3. Copy the `copy_to_skickamejl` attribute into Skickamejl's webhook/event callback settings.
 
-The webhook URL contains a long random ID and should be treated like a secret. If Home Assistant has no external URL configured, the sensor still exposes `webhook_path` so you can combine it with your own Home Assistant base URL.
+When Home Assistant Cloud/Nabu Casa is active, the integration creates a cloudhook and `copy_to_skickamejl` uses that public `cloudhook_url`. Without Nabu Casa or another public external URL, the sensor shows the local Home Assistant URL and marks `internet_reachable` as `false`; that local URL works only from the same network. The webhook URL contains a long random ID and should be treated like a secret.
 
 Skickamejl should send a JSON `POST` to that URL. The integration accepts both camelCase and snake_case fields:
 
@@ -180,7 +180,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.4.2
+/skickamejl_static/skickamejl-card.js?v=0.4.3
 ```
 
 Use resource type:
