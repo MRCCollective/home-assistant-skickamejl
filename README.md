@@ -21,11 +21,11 @@
 
 Custom Home Assistant integration for [Skickamejl](https://skickamejl.se), focused on monitoring transactional email activity in Home Assistant and optionally sending email notifications from automations.
 
-This repository is prepared for HACS as a custom integration. It is not submitted to the default HACS repository yet.
+This repository can be installed as a HACS custom repository and has been submitted for inclusion in the default HACS repository.
 
 ## Features
 
-- UI config flow for Skickamejl backend URL, server API-token, sender address, and default recipient
+- UI config flow for backend URL, server API-token, sender address, and default recipient, with automatic server identity and name detection
 - Options flow for changing backend URL, server API-token, sender address, and default recipient without deleting the integration
 - Native Home Assistant `notify` entity for automation-friendly email notifications
 - Home Assistant action `skickamejl.send_email` for dynamic recipients, senders, text bodies, and HTML bodies
@@ -33,9 +33,10 @@ This repository is prepared for HACS as a custom integration. It is not submitte
 - Home Assistant event `skickamejl_email_event` for automations triggered by Skickamejl activity
 - Diagnostic entities for backend availability, the latest delivery, and the latest webhook event
 - Delivery-detail polling every 60 seconds after each HA send or webhook event with a delivery ID until Skickamejl reports a final outcome
-- Custom Lovelace card with localized Swedish/English UI, icons, status overview, and delivery history
+- Multiple Skickamejl servers as separate config entries, each with its own API token, notify entity, diagnostics, webhook, and card routing
+- Custom Lovelace card with localized Swedish/English UI, server name, status overview, delivery history, and an optional test-email form
 - Sends `title` as the email subject and `message` as the plain-text email body
-- Health-check validation against the configured backend during setup
+- Authenticated server identity and connection validation during setup
 - Diagnostics with server API-token and email addresses redacted
 - HACS, Ruff, MyPy, HACS validation, and hassfest workflow files
 - Skickamejl brand assets included for HACS and the integration directory
@@ -67,21 +68,31 @@ Enter:
 - Sender email address, for example `home@example.com`
 - Default recipient email address, for example `you@example.com`
 
-The config flow validates that the backend can be reached through `GET /api/status`. The server API-token is sent as `X-Api-Key` when Home Assistant sends an email through `POST /api/messages`.
+The config flow sends the token to `GET /api/server`. Skickamejl returns the stable server ID and current server name associated with that token. Home Assistant uses the ID to prevent duplicate setup and uses the name for the config entry, device, entities, action selector, and dashboard card. The API token is never shown in entity state.
+
+After setup, `GET /api/status` is used for the recurring availability check. The server API-token is sent as `X-Api-Key` when Home Assistant sends an email through `POST /api/messages`.
 
 Use the **Server API-token** shown on the Skickamejl server settings page. Account API tokens that start with `skm_account_` are for account-management API calls and cannot send messages through `POST /api/messages`.
 
 After setup, open **Settings -> Devices & services -> Skickamejl -> Configure** to update the backend URL, server API-token, sender address, or default recipient without removing and re-adding the integration.
 
+### Multiple Skickamejl servers
+
+Add the integration once for every Skickamejl server/API token. Home Assistant automatically gives each entry the name returned by Skickamejl. A setup can therefore contain entries such as **Production**, **Development**, and **Customer A** even when all of them use `https://skickamejl.se`.
+
+Each entry is isolated: sends, default addresses, delivery sensors, webhook events, and test emails use that entry's API token. Advanced send actions require an explicit server selection, so adding another entry cannot silently change an existing automation's destination.
+
 ## Notification Entity
 
-The integration creates one notify entity per config entry. Home Assistant commonly names the first one:
+The integration creates one notify entity per configured Skickamejl server. Home Assistant commonly names the first one:
 
 ```text
 notify.skickamejl
 ```
 
 If Home Assistant assigns a different entity ID, use the entity ID shown under **Settings -> Devices & services -> Entities**.
+
+With multiple servers, select the corresponding notify entity in each automation, for example `notify.production` or `notify.development`. Entity IDs are assigned by Home Assistant and may differ from these examples.
 
 ## Entities
 
@@ -180,7 +191,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.4.5
+/skickamejl_static/skickamejl-card.js?v=0.5.0
 ```
 
 Use resource type:
@@ -195,7 +206,7 @@ Then add a manual dashboard card:
 type: custom:skickamejl-card
 ```
 
-The card auto-detects the Skickamejl backend availability entity and latest delivery sensors. It shows backend status, last delivery status, queued time, delivery ID, message ID, and delivery history from status events.
+The card auto-detects the Skickamejl backend availability entity and latest delivery sensors. It shows the API-detected server name, backend status, last delivery status, queued time, delivery ID, message ID, and delivery history from status events. When multiple servers exist, automatic detection pins all status entities and test sends to the same config entry as the selected backend entity.
 
 You can also pin exact entity IDs:
 
@@ -209,9 +220,12 @@ queued_at_entity: sensor.skickamejl_last_queued_at
 preferred_language: auto
 theme_mode: auto
 show_logo: true
+show_test_form: true
 ```
 
-The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, and entity overrides. The card is a status and delivery monitor; test sends belong in Skickamejl itself or in Home Assistant Developer Tools using the `skickamejl.send_email` action. The card uses icon buttons for copying IDs.
+The visual editor supports preferred language (automatic from the Home Assistant user language, Swedish, or English), theme mode, background color, logo visibility, entity overrides, and an optional test-email form. Enable **Show test email form** in the card editor, or set `show_test_form: true` in YAML.
+
+The test form provides recipient, subject, and plain-text message fields. Leave the recipient blank to use the configured default recipient. The button is disabled while sending and the card displays queued/error feedback. It always sends through the config entry associated with the selected backend entity; no API token is stored in the card configuration.
 
 Before the first delivery has been recorded, the card shows a compact empty state instead of empty delivery IDs. After the first webhook or HA-initiated send, it switches to the status, IDs, and delivery history view.
 
@@ -227,9 +241,12 @@ When updating the card during development, copy the changed files from `www/` to
 
 Use `skickamejl.send_email` when an automation needs more control than the native notify entity.
 
+In the visual automation editor, choose **Skickamejl: Send email** and select the server by its Skickamejl name. The selector stores Home Assistant's config-entry ID in YAML.
+
 ```yaml
 action: skickamejl.send_email
 data:
+  config_entry_id: "01J..."
   to: "family@example.com"
   from: "home@example.com"
   subject: "Dagens husrapport"
@@ -240,12 +257,12 @@ data:
 
 `subject` is required. At least one of `text_body` or `html_body` is required. `to` and `from` are optional; when omitted, the integration uses the default recipient and sender from the config entry.
 
-If you configure multiple Skickamejl entries, include `entry_id` in service calls.
+`config_entry_id` is required. Select it through the visual action editor whenever possible; the opaque values in these examples are placeholders. Requiring the server means adding another Skickamejl entry can never silently change where an email is sent.
 
 ```yaml
 action: skickamejl.send_email
 data:
-  entry_id: "01J..."
+  config_entry_id: "01J..."
   to: "ops@example.com"
   subject: "Vattenläcka"
   text_body: "Vatten upptäcktes vid tvättmaskinen."
@@ -256,6 +273,7 @@ HTML email is supported by passing `html_body`:
 ```yaml
 action: skickamejl.send_email
 data:
+  config_entry_id: "01J..."
   subject: "Kvällsrapport"
   text_body: "Ytterdörren är låst och alla lampor är släckta."
   html_body: "<p>Ytterdörren är <strong>låst</strong> och alla lampor är släckta.</p>"
@@ -320,11 +338,14 @@ actions:
 3. Trigger a transactional email from your app or skickamejl.se.
 4. Watch `sensor.skickamejl_last_template_id` and `sensor.skickamejl_last_delivery_status` update.
 5. Open the card and confirm delivery ID, message ID, and delivery history appear.
-6. Change one setting from **Settings -> Devices & services -> Skickamejl -> Configure** and confirm the integration reloads cleanly.
+6. Enable **Show test email form** in the card editor, send a test, and confirm that queued/error feedback appears.
+7. If multiple servers are configured, add one card for each backend entity and confirm every card shows the correct server name and delivery information.
+8. Build a `skickamejl.send_email` action in the visual editor and confirm the server appears as a named selector rather than a raw text field.
+9. Change one setting from **Settings -> Devices & services -> Skickamejl -> Configure** and confirm the integration reloads cleanly.
 
 ## Current Scope
 
-This version supports incoming Skickamejl webhooks, Home Assistant event triggers, native notify emails, a richer `skickamejl.send_email` action, backend health, options flow, delivery-detail polling, last delivery diagnostics, and a dashboard card with delivery history. Attachments can be added later once the core send and status flows are working smoothly.
+This version supports automatic server identity/name discovery, multiple isolated Skickamejl servers, incoming webhooks, Home Assistant event triggers, native notify emails, a server-selectable `skickamejl.send_email` action, backend health, options flow, delivery-detail polling, last-delivery diagnostics, and a dashboard card with delivery history and optional test sends. Attachments are not currently supported.
 
 ## Development
 

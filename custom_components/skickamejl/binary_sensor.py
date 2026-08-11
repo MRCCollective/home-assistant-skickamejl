@@ -31,6 +31,7 @@ async def async_setup_entry(
                 coordinator,
                 entry.entry_id,
                 data.get(CONF_SERVER_URL),
+                entry.runtime_data.server_info.server_name,
             )
         ]
     )
@@ -48,12 +49,21 @@ class SkickamejlBackendAvailableBinarySensor(SkickamejlEntity, BinarySensorEntit
         coordinator: SkickamejlHealthCoordinator,
         entry_id: str,
         server_url: str | None,
+        server_name: str,
     ) -> None:
         """Initialize the binary sensor."""
-        super().__init__(coordinator, entry_id, server_url)
+        super().__init__(coordinator, entry_id, server_url, server_name)
         self._attr_unique_id = f"{DOMAIN}_{entry_id}_backend_available"
 
     @property
     def is_on(self) -> bool:
         """Return true when Skickamejl is reachable."""
         return bool(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        """Expose non-secret routing metadata for the dashboard card."""
+        return {
+            "server_name": self._server_name,
+            "config_entry_id": self._entry_id,
+        }

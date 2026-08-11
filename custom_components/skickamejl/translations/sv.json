@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Anslut Skickamejl",
-        "description": "Ange backend-URL, server API-token, avsändaradress och standardmottagare för Skickamejl.",
+        "description": "Ange backend-URL, server API-token, avsändaradress och standardmottagare. Servernamnet hämtas automatiskt.",
         "data": {
           "server_url": "Backend-URL",
           "api_key": "Server API-token",
@@ -26,7 +26,7 @@
     "step": {
       "init": {
         "title": "Uppdatera Skickamejl",
-        "description": "Ändra backend-URL, server API-token, avsändaradress eller standardmottagare för Skickamejl.",
+        "description": "Ändra backend-URL, server API-token, avsändaradress eller standardmottagare. Servernamnet hämtas automatiskt.",
         "data": {
           "server_url": "Backend-URL",
           "api_key": "Server API-token",
@@ -103,9 +103,9 @@
           "name": "HTML-innehåll",
           "description": "Valfritt HTML-innehåll för e-postmeddelandet."
         },
-        "entry_id": {
-          "name": "Entry-ID",
-          "description": "Valfritt config entry-ID för Skickamejl när flera instanser är konfigurerade."
+        "config_entry_id": {
+          "name": "Skickamejl-server",
+          "description": "Skickamejl-servern som ska användas för mejlet."
         }
       }
     }

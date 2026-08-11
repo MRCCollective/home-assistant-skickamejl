@@ -24,7 +24,8 @@ send_email:
       selector:
         text:
           multiline: true
-    entry_id:
-      required: false
+    config_entry_id:
+      required: true
       selector:
-        text:
+        config_entry:
+          integration: skickamejl

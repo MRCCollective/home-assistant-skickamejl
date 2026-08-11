@@ -7,8 +7,10 @@ from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from homeassistant.const import ATTR_CONFIG_ENTRY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers.selector import ConfigEntrySelector
 
 from .api import SkickamejlError
 from .config import config_entry_data
@@ -18,7 +20,6 @@ from .const import (
     ATTR_SUBJECT,
     ATTR_TEXT_BODY,
     ATTR_TO,
-    CONF_ENTRY_ID,
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
     DOMAIN,
@@ -35,7 +36,9 @@ SEND_EMAIL_SCHEMA = vol.Schema(
         vol.Required(ATTR_SUBJECT): cv.string,
         vol.Optional(ATTR_TEXT_BODY): cv.string,
         vol.Optional(ATTR_HTML_BODY): cv.string,
-        vol.Optional(CONF_ENTRY_ID): cv.string,
+        vol.Required(ATTR_CONFIG_ENTRY_ID): ConfigEntrySelector(
+            {"integration": DOMAIN}
+        ),
     }
 )
 
@@ -108,42 +111,22 @@ def _runtime_from_call(
 ) -> tuple[Any, dict[str, Any]]:
     """Return runtime and config data for a service call."""
     domain_data: dict[str, Any] = hass.data.get(DOMAIN, {})
-    entry_id = call.data.get(CONF_ENTRY_ID)
-
-    if entry_id is not None:
-        runtime_data = domain_data.get(entry_id)
-        if runtime_data is None:
-            raise ServiceValidationError(f"Unknown Skickamejl entry_id: {entry_id}")
-        entry = _entry_by_id(hass, str(entry_id))
-        if entry is None:
-            raise ServiceValidationError(f"Unknown Skickamejl entry_id: {entry_id}")
-        return runtime_data, config_entry_data(entry)
-
-    if not domain_data:
-        raise ServiceValidationError("No Skickamejl config entry is loaded")
-    if len(domain_data) > 1:
+    entry_id = str(call.data[ATTR_CONFIG_ENTRY_ID])
+    runtime_data = domain_data.get(entry_id)
+    entry = _entry_by_id(hass, entry_id)
+    if runtime_data is None or entry is None:
         raise ServiceValidationError(
-            "Multiple Skickamejl entries are loaded; provide entry_id"
+            f"Unknown or unloaded Skickamejl config_entry_id: {entry_id}"
         )
-
-    only_entry_id, runtime_data = next(iter(domain_data.items()))
-    entry = _entry_by_id(hass, str(only_entry_id))
-    if entry is None:
-        raise ServiceValidationError("No Skickamejl config entry is loaded")
     return runtime_data, config_entry_data(entry)
 
 
-def _entry_id_from_call(hass: HomeAssistant, call: ServiceCall) -> str:
+def _entry_id_from_call(_hass: HomeAssistant, call: ServiceCall) -> str:
     """Return the config entry ID selected by a service call."""
-    if entry_id := call.data.get(CONF_ENTRY_ID):
-        return str(entry_id)
-
-    domain_data: dict[str, Any] = hass.data.get(DOMAIN, {})
-    if len(domain_data) != 1:
-        raise ServiceValidationError(
-            "Multiple Skickamejl entries are loaded; provide entry_id"
-        )
-    return str(next(iter(domain_data)))
+    entry_id = str(call.data[ATTR_CONFIG_ENTRY_ID]).strip()
+    if not entry_id:
+        raise ServiceValidationError("config_entry_id must not be empty")
+    return entry_id
 
 
 def _entry_from_call(hass: HomeAssistant, call: ServiceCall) -> Any:
@@ -151,7 +134,7 @@ def _entry_from_call(hass: HomeAssistant, call: ServiceCall) -> Any:
     entry_id = _entry_id_from_call(hass, call)
     entry = _entry_by_id(hass, entry_id)
     if entry is None:
-        raise ServiceValidationError(f"Unknown Skickamejl entry_id: {entry_id}")
+        raise ServiceValidationError(f"Unknown Skickamejl config_entry_id: {entry_id}")
     return entry
 
 

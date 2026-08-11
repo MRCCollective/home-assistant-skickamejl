@@ -30,7 +30,6 @@ from .const import (
     CONF_WEBHOOK_ID,
     DOMAIN,
     EVENT_EMAIL,
-    NAME,
     send_result_signal,
     webhook_event_signal,
 )
@@ -138,7 +137,7 @@ class SkickamejlSensorEntity(SensorEntity):
         data = config_entry_data(self._entry)
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name=NAME,
+            name=self._entry.runtime_data.server_info.server_name,
             manufacturer="Skickamejl",
             model="Transactional Email API",
             configuration_url=data.get(CONF_SERVER_URL),
@@ -209,6 +208,8 @@ class SkickamejlLastSendSensor(SkickamejlSensorEntity):
         if result is None:
             return None
         return {
+            "config_entry_id": self._entry.entry_id,
+            "server_name": self._entry.runtime_data.server_info.server_name,
             "email_message_id": result.email_message_id,
             "delivery_id": result.delivery_id,
             "message_id": result.message_id,

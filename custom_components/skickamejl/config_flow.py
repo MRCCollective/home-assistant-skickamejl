@@ -68,14 +68,10 @@ async def validate_input(
         data[CONF_SERVER_URL],
         data[CONF_API_KEY],
     )
-    await api.async_validate_connection()
+    server_info = await api.async_validate_connection()
     return {
-        "title": "Skickamejl",
-        "unique_id": unique_id_for_config(
-            data[CONF_SERVER_URL],
-            data[CONF_SENDER_ADDRESS],
-            data[CONF_RECIPIENT_ADDRESS],
-        ),
+        "title": server_info.server_name,
+        "unique_id": unique_id_for_config(server_info.server_id),
     }
 
 

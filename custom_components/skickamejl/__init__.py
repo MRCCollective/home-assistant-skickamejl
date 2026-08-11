@@ -20,6 +20,7 @@ from .api import (
     SkickamejlConnectionError,
     SkickamejlEmailSendResult,
     SkickamejlError,
+    SkickamejlServerInfo,
 )
 from .config import config_entry_data
 from .const import (
@@ -55,6 +56,7 @@ class SkickamejlRuntimeData:
     hass: HomeAssistant
     api: SkickamejlApiClient
     coordinator: SkickamejlHealthCoordinator
+    server_info: SkickamejlServerInfo
     last_send: SkickamejlEmailSendResult | None = None
     last_webhook_event: SkickamejlWebhookEvent | None = None
     delivery_poll_task: asyncio.Task[None] | None = None
@@ -83,7 +85,7 @@ async def async_setup_entry(
     )
 
     try:
-        await api.async_validate_connection()
+        server_info = await api.async_validate_connection()
     except SkickamejlConnectionError as err:
         raise ConfigEntryNotReady(str(err)) from err
     except SkickamejlError as err:
@@ -96,6 +98,7 @@ async def async_setup_entry(
         hass=hass,
         api=api,
         coordinator=coordinator,
+        server_info=server_info,
     )
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry.runtime_data
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))

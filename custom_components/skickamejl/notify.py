@@ -22,7 +22,6 @@ from .const import (
     CONF_SENDER_ADDRESS,
     DEFAULT_NOTIFICATION_TITLE,
     DOMAIN,
-    NAME,
 )
 from .runtime import async_record_send_result
 
@@ -57,7 +56,7 @@ class SkickamejlNotifyEntity(NotifyEntity):
         data = config_entry_data(self._entry)
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name=NAME,
+            name=self._entry.runtime_data.server_info.server_name,
             manufacturer="Skickamejl",
             model="Transactional Email API",
             configuration_url=data.get("server_url"),

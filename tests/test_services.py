@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from homeassistant.const import ATTR_CONFIG_ENTRY_ID
 from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.skickamejl.api import SkickamejlEmailSendResult
@@ -15,7 +16,6 @@ from custom_components.skickamejl.const import (
     ATTR_SUBJECT,
     ATTR_TEXT_BODY,
     ATTR_TO,
-    CONF_ENTRY_ID,
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
     DOMAIN,
@@ -161,6 +161,7 @@ async def test_send_email_service_uses_defaults_and_updates_last_send(
     handler, schema = hass.services.registered[(DOMAIN, SERVICE_SEND_EMAIL)]
     call = SimpleNamespace(
         data={
+            ATTR_CONFIG_ENTRY_ID: "entry-1",
             ATTR_SUBJECT: "Subject",
             ATTR_TEXT_BODY: "Text",
         }
@@ -204,21 +205,28 @@ async def test_send_email_service_requires_body() -> None:
     handler, _schema = hass.services.registered[(DOMAIN, SERVICE_SEND_EMAIL)]
 
     with pytest.raises(ServiceValidationError):
-        await handler(SimpleNamespace(data={ATTR_SUBJECT: "Subject"}))
+        await handler(
+            SimpleNamespace(
+                data={
+                    ATTR_CONFIG_ENTRY_ID: "entry-1",
+                    ATTR_SUBJECT: "Subject",
+                }
+            )
+        )
 
 
-def test_entry_id_from_call_requires_entry_id_when_multiple_entries_loaded() -> None:
-    """Multiple config entries require an explicit entry_id."""
-    hass = SimpleNamespace(data={DOMAIN: {"entry-1": object(), "entry-2": object()}})
-    call = SimpleNamespace(data={})
+def test_entry_id_from_call_requires_config_entry_id() -> None:
+    """Service calls require an explicit config entry selection."""
+    hass = SimpleNamespace(data={DOMAIN: {"entry-1": object()}})
+    call = SimpleNamespace(data={ATTR_CONFIG_ENTRY_ID: ""})
 
     with pytest.raises(ServiceValidationError):
         _entry_id_from_call(hass, call)
 
 
-def test_entry_id_from_call_accepts_explicit_entry_id() -> None:
+def test_entry_id_from_call_accepts_explicit_config_entry_id() -> None:
     """Explicit entry IDs are passed through."""
     hass = SimpleNamespace(data={DOMAIN: {"entry-1": object(), "entry-2": object()}})
-    call = SimpleNamespace(data={CONF_ENTRY_ID: "entry-2"})
+    call = SimpleNamespace(data={ATTR_CONFIG_ENTRY_ID: "entry-2"})
 
     assert _entry_id_from_call(hass, call) == "entry-2"

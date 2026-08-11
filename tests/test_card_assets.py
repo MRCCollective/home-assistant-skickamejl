@@ -57,19 +57,17 @@ def test_card_contains_swedish_and_english_localization() -> None:
     assert "Ingen e-post skickad än" in source
 
 
-def test_card_does_not_include_test_send_form() -> None:
-    """The card should monitor delivery status instead of sending test email."""
+def test_card_includes_opt_in_test_send_form() -> None:
+    """The card can send a test email through its associated config entry."""
     source = ROOT_CARD.read_text(encoding="utf-8")
 
-    assert "callService" not in source
-    assert "show_test_form" not in source
-    assert "_sendTestEmail" not in source
-    assert "test-form" not in source
-    assert "form-to" not in source
-    assert "form-subject" not in source
-    assert "form-body" not in source
-    assert "form-from" not in source
-    assert "recipient-preset" not in source
+    assert "show_test_form: false" in source
+    assert "_sendTestEmail" in source
+    assert 'callService("skickamejl", "send_email", data)' in source
+    assert 'class="test-form"' in source
+    assert "config_entry_id" in source
+    assert "server_name" in source
+    assert "configEntryId" in source
 
 
 def test_card_auto_detects_swedish_entity_names() -> None:

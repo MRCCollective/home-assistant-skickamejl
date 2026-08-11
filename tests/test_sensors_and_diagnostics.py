@@ -134,7 +134,12 @@ def test_parse_timestamp_handles_zulu_and_invalid_values() -> None:
 
 def test_last_send_sensor_values_and_attributes() -> None:
     """Last-send sensors read values and attributes from runtime data."""
-    entry = SimpleNamespace(entry_id="entry-1", runtime_data=SimpleNamespace())
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        runtime_data=SimpleNamespace(
+            server_info=SimpleNamespace(server_name="Produktion")
+        ),
+    )
     entry.runtime_data.last_send = _send_result()
 
     status_description = next(
@@ -152,6 +157,8 @@ def test_last_send_sensor_values_and_attributes() -> None:
     assert status_sensor.native_value == "delivered"
     assert queued_at_sensor.native_value == datetime(2026, 8, 3, 10, 0, tzinfo=UTC)
     assert status_sensor.extra_state_attributes == {
+        "config_entry_id": "entry-1",
+        "server_name": "Produktion",
         "email_message_id": "email-1",
         "delivery_id": "delivery-1",
         "message_id": "message-1",
@@ -174,7 +181,10 @@ def test_last_send_sensor_is_empty_before_first_send() -> None:
     """Last-send sensors are empty before Home Assistant sends an email."""
     entry = SimpleNamespace(
         entry_id="entry-1",
-        runtime_data=SimpleNamespace(last_send=None),
+        runtime_data=SimpleNamespace(
+            last_send=None,
+            server_info=SimpleNamespace(server_name="Produktion"),
+        ),
     )
     sensor = SkickamejlLastSendSensor(entry, SENSORS[0])
 
@@ -188,11 +198,15 @@ def test_sensor_entities_are_attached_to_the_config_entry_device() -> None:
         entry_id="entry-1",
         data={CONF_SERVER_URL: "https://skickamejl.se"},
         options={},
-        runtime_data=SimpleNamespace(last_send=None),
+        runtime_data=SimpleNamespace(
+            last_send=None,
+            server_info=SimpleNamespace(server_name="Produktion"),
+        ),
     )
     sensor = SkickamejlLastSendSensor(entry, SENSORS[0])
 
     assert sensor.device_info["identifiers"] == {(DOMAIN, "entry-1")}
+    assert sensor.device_info["name"] == "Produktion"
     assert sensor.device_info["configuration_url"] == "https://skickamejl.se"
 
 

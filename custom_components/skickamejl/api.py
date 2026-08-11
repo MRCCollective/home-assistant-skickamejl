@@ -47,6 +47,14 @@ class SkickamejlValidationError(SkickamejlError):
 
 
 @dataclass(slots=True, frozen=True)
+class SkickamejlServerInfo:
+    """Identity of the server associated with an API token."""
+
+    server_id: str
+    server_name: str
+
+
+@dataclass(slots=True, frozen=True)
 class SkickamejlEmailSendResult:
     """A Skickamejl email send response."""
 
@@ -132,9 +140,22 @@ class SkickamejlApiClient:
         """Return a non-secret fingerprint of the configured server API token."""
         return hashlib.sha256(self._api_key.encode()).hexdigest()[:12]
 
-    async def async_validate_connection(self) -> None:
-        """Validate that the configured Skickamejl backend is reachable."""
-        await self._request("GET", "/api/status")
+    async def async_validate_connection(self) -> SkickamejlServerInfo:
+        """Validate the token and return its Skickamejl server identity."""
+        return await self.async_get_server_info()
+
+    async def async_get_server_info(self) -> SkickamejlServerInfo:
+        """Return the server associated with the configured API token."""
+        data = await self._request("GET", "/api/server")
+        if not isinstance(data, dict):
+            raise SkickamejlValidationError("Unexpected server response from API")
+        server_id = _as_optional_str(data.get("serverId"))
+        server_name = _as_optional_str(data.get("serverName"))
+        if not server_id or not server_name:
+            raise SkickamejlValidationError(
+                "Server response is missing identity fields"
+            )
+        return SkickamejlServerInfo(server_id=server_id, server_name=server_name)
 
     async def async_check_health(self) -> bool:
         """Return whether the Skickamejl backend health endpoint is reachable."""
@@ -280,19 +301,10 @@ def normalize_server_url(server_url: str) -> str:
 
 
 def unique_id_for_config(
-    server_url: str,
-    sender_address: str,
-    recipient_address: str,
+    server_id: str,
 ) -> str:
-    """Build a stable non-secret unique ID for a config entry."""
-    material = "|".join(
-        (
-            normalize_server_url(server_url).lower(),
-            sender_address.strip().lower(),
-            recipient_address.strip().lower(),
-        )
-    )
-    return hashlib.sha256(material.encode()).hexdigest()
+    """Build a stable unique ID from the authenticated server identity."""
+    return server_id.strip().lower()
 
 
 def quote_path_value(value: str) -> str:

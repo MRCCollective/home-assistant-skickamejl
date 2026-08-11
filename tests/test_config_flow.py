@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from custom_components.skickamejl.api import SkickamejlApiClient, SkickamejlServerInfo
 from custom_components.skickamejl.config import config_entry_data
 from custom_components.skickamejl.config_flow import (
     _normalize_user_input,
     _validate_normalized_input,
+    validate_input,
 )
 from custom_components.skickamejl.const import (
     CONF_API_KEY,
@@ -73,3 +75,22 @@ def test_validate_normalized_input_reports_blank_key_and_invalid_emails() -> Non
         CONF_SENDER_ADDRESS: "invalid_email",
         CONF_RECIPIENT_ADDRESS: "invalid_email",
     }
+
+
+async def test_validate_input_uses_authenticated_server_identity(monkeypatch) -> None:
+    """The config entry title and unique ID come from the API token's server."""
+
+    async def fake_validate(_client: SkickamejlApiClient) -> SkickamejlServerInfo:
+        return SkickamejlServerInfo("SERVER-1", "Produktion")
+
+    monkeypatch.setattr(SkickamejlApiClient, "async_validate_connection", fake_validate)
+    data = {
+        CONF_SERVER_URL: "https://skickamejl.se",
+        CONF_API_KEY: "secret",
+        CONF_SENDER_ADDRESS: "home@example.com",
+        CONF_RECIPIENT_ADDRESS: "user@example.com",
+    }
+
+    info = await validate_input(None, object(), data)
+
+    assert info == {"title": "Produktion", "unique_id": "server-1"}

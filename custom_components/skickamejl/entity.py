@@ -19,18 +19,20 @@ class SkickamejlEntity(CoordinatorEntity[SkickamejlHealthCoordinator]):
         coordinator: SkickamejlHealthCoordinator,
         entry_id: str,
         server_url: str | None,
+        server_name: str = NAME,
     ) -> None:
         """Initialize the entity."""
         super().__init__(coordinator)
         self._entry_id = entry_id
         self._server_url = server_url
+        self._server_name = server_name
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information for Skickamejl."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry_id)},
-            name=NAME,
+            name=self._server_name,
             manufacturer="Skickamejl",
             model="Transactional Email API",
             configuration_url=self._server_url,

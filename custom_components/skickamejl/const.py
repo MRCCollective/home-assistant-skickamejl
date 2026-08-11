@@ -16,7 +16,6 @@ CONF_API_KEY: Final = "api_key"
 CONF_RECIPIENT_ADDRESS: Final = "recipient_address"
 CONF_SENDER_ADDRESS: Final = "sender_address"
 CONF_SERVER_URL: Final = "server_url"
-CONF_ENTRY_ID: Final = "entry_id"
 CONF_CLOUDHOOK_URL: Final = "cloudhook_url"
 CONF_WEBHOOK_ID: Final = "webhook_id"
 

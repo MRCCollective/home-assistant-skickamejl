@@ -70,20 +70,27 @@ def test_normalize_server_url_adds_scheme_and_removes_trailing_slash() -> None:
     assert normalize_server_url("https://api.example.com/") == "https://api.example.com"
 
 
-def test_unique_id_for_config_is_stable_and_case_insensitive() -> None:
-    """Unique IDs should not change because of casing or trailing slash noise."""
-    first = unique_id_for_config(
-        "https://api.example.com/",
-        "Home@Example.com",
-        "User@Example.com",
-    )
-    second = unique_id_for_config(
-        "https://API.example.com",
-        "home@example.com",
-        "user@example.com",
-    )
+def test_unique_id_for_config_uses_stable_server_id() -> None:
+    """Unique IDs normalize the authenticated server id."""
+    assert unique_id_for_config(" SERVER-ID ") == "server-id"
 
-    assert first == second
+
+async def test_validate_connection_returns_authenticated_server_identity() -> None:
+    """Connection validation resolves the server behind the API token."""
+    session = FakeSession(
+        FakeResponse(
+            200,
+            json_data={"serverId": "server-1", "serverName": "Produktion"},
+            text='{"serverId":"server-1","serverName":"Produktion"}',
+        )
+    )
+    client = SkickamejlApiClient(session, "https://skickamejl.se", "secret")
+
+    info = await client.async_validate_connection()
+
+    assert info.server_id == "server-1"
+    assert info.server_name == "Produktion"
+    assert session.requests[0]["url"] == "https://skickamejl.se/api/server"
 
 
 async def test_check_health_calls_status_endpoint_with_api_key() -> None:
