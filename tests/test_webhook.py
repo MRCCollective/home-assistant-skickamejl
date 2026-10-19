@@ -17,6 +17,7 @@ from custom_components.skickamejl.webhook import (
     _handle_webhook,
     async_setup_cloudhook,
     ensure_webhook_id,
+    webhook_url_for_config,
 )
 
 
@@ -155,6 +156,38 @@ def test_ensure_webhook_id_reuses_existing_id() -> None:
 
     assert ensure_webhook_id(hass, entry) == "skickamejl_existing"
     assert config_entries.updated_data is None
+
+
+def test_webhook_url_for_config_prefers_cloudhook(monkeypatch: Any) -> None:
+    """The admin view should show the public cloudhook when one is available."""
+    entry = SimpleNamespace(
+        data={
+            CONF_WEBHOOK_ID: "skickamejl_existing",
+            CONF_CLOUDHOOK_URL: "https://hooks.nabu.casa/cloud-hook",
+        },
+        options={},
+    )
+    monkeypatch.setattr(
+        "custom_components.skickamejl.webhook.ha_webhook.async_generate_url",
+        lambda *_args, **_kwargs: "http://homeassistant.local/api/webhook/id",
+    )
+
+    assert webhook_url_for_config(SimpleNamespace(), entry) == (
+        "https://hooks.nabu.casa/cloud-hook"
+    )
+
+
+def test_webhook_url_for_config_uses_home_assistant_url(monkeypatch: Any) -> None:
+    """Without Cloud, the admin view should use Home Assistant's own URL."""
+    entry = SimpleNamespace(data={CONF_WEBHOOK_ID: "skickamejl_existing"}, options={})
+    monkeypatch.setattr(
+        "custom_components.skickamejl.webhook.ha_webhook.async_generate_url",
+        lambda *_args, **_kwargs: "http://homeassistant.local/api/webhook/id",
+    )
+
+    assert webhook_url_for_config(SimpleNamespace(), entry) == (
+        "http://homeassistant.local/api/webhook/id"
+    )
 
 
 async def test_setup_cloudhook_stores_cloudhook_url(monkeypatch: Any) -> None:

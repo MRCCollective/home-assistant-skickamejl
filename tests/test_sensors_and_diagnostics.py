@@ -20,6 +20,7 @@ from custom_components.skickamejl.diagnostics import (
     _health_summary,
     _last_send_summary,
     _last_webhook_event_summary,
+    async_get_config_entry_diagnostics,
 )
 from custom_components.skickamejl.events import SkickamejlWebhookEvent
 from custom_components.skickamejl.sensor import (
@@ -27,10 +28,9 @@ from custom_components.skickamejl.sensor import (
     WEBHOOK_EVENT_SENSORS,
     SkickamejlLastSendSensor,
     SkickamejlWebhookEventSensor,
-    SkickamejlWebhookUrlSensor,
     _delivery_status,
-    _is_likely_public_url,
     _parse_timestamp,
+    async_setup_entry,
     is_terminal_delivery_status,
 )
 
@@ -210,39 +210,32 @@ def test_sensor_entities_are_attached_to_the_config_entry_device() -> None:
     assert sensor.device_info["configuration_url"] == "https://skickamejl.se"
 
 
-def test_webhook_url_sensor_prefers_cloudhook_url(monkeypatch) -> None:
-    """The copy URL should use Nabu Casa cloudhooks when available."""
+async def test_sensor_setup_does_not_publish_webhook_credentials() -> None:
+    """Webhook credentials must never become entity state or attributes."""
+    entities = []
+
+    await async_setup_entry(None, SimpleNamespace(entry_id="entry-1"), entities.extend)
+
+    assert len(entities) == len(SENSORS) + len(WEBHOOK_EVENT_SENSORS)
+    assert all("webhook_url" not in entity.unique_id for entity in entities)
+
+
+async def test_diagnostics_redact_webhook_credentials() -> None:
+    """Shared diagnostics must not include the cloudhook URL or webhook ID."""
     entry = SimpleNamespace(
         entry_id="entry-1",
+        version=1,
         data={
-            CONF_WEBHOOK_ID: "skickamejl_hook",
-            CONF_CLOUDHOOK_URL: "https://hooks.nabu.casa/cloud-hook",
+            CONF_WEBHOOK_ID: "skickamejl_secret",
+            CONF_CLOUDHOOK_URL: "https://hooks.nabu.casa/secret",
         },
         options={},
     )
-    sensor = SkickamejlWebhookUrlSensor(entry)
-    sensor.hass = SimpleNamespace()
-    monkeypatch.setattr(
-        "custom_components.skickamejl.sensor.ha_webhook.async_generate_url",
-        lambda *_args, **_kwargs: "http://192.168.50.227:8123/api/webhook/hook",
-    )
 
-    attributes = sensor.extra_state_attributes
+    result = await async_get_config_entry_diagnostics(SimpleNamespace(data={}), entry)
 
-    assert attributes["webhook_url"] == "https://hooks.nabu.casa/cloud-hook"
-    assert attributes["cloudhook_url"] == "https://hooks.nabu.casa/cloud-hook"
-    assert attributes["copy_to_skickamejl"] == "https://hooks.nabu.casa/cloud-hook"
-    assert attributes["url_source"] == "nabu_casa_cloudhook"
-    assert attributes["internet_reachable"] is True
-
-
-def test_public_url_detection_handles_local_and_public_hosts() -> None:
-    """Webhook hints should distinguish local and public-looking URLs."""
-    assert _is_likely_public_url("http://192.168.50.227:8123/api/webhook/id") is False
-    assert (
-        _is_likely_public_url("http://homeassistant.local:8123/api/webhook/id") is False
-    )
-    assert _is_likely_public_url("https://hooks.nabu.casa/id") is True
+    assert result["entry"]["data"][CONF_WEBHOOK_ID] == "**REDACTED**"
+    assert result["entry"]["data"][CONF_CLOUDHOOK_URL] == "**REDACTED**"
 
 
 def test_webhook_event_sensor_values_and_attributes() -> None:

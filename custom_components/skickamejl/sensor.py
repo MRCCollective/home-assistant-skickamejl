@@ -5,10 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from ipaddress import ip_address
-from urllib.parse import urlparse
 
-from homeassistant.components import webhook as ha_webhook
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -20,16 +17,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.network import NoURLAvailableError
 
 from .api import SkickamejlEmailSendResult
 from .config import config_entry_data
 from .const import (
-    CONF_CLOUDHOOK_URL,
     CONF_SERVER_URL,
-    CONF_WEBHOOK_ID,
     DOMAIN,
-    EVENT_EMAIL,
     send_result_signal,
     webhook_event_signal,
 )
@@ -153,7 +146,6 @@ async def async_setup_entry(
     async_add_entities(
         [
             *(SkickamejlLastSendSensor(entry, description) for description in SENSORS),
-            SkickamejlWebhookUrlSensor(entry),
             *(
                 SkickamejlWebhookEventSensor(entry, description)
                 for description in WEBHOOK_EVENT_SENSORS
@@ -225,59 +217,6 @@ class SkickamejlLastSendSensor(SkickamejlSensorEntity):
             "last_error": result.last_error,
             "attempts": list(result.attempts),
             "status_events": list(result.status_events),
-        }
-
-
-class SkickamejlWebhookUrlSensor(SkickamejlSensorEntity):
-    """A Skickamejl webhook URL sensor."""
-
-    _attr_translation_key = "webhook_url"
-    _attr_icon = "mdi:webhook"
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, entry: ConfigEntry) -> None:
-        """Initialize the sensor."""
-        super().__init__(entry)
-        self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_webhook_url"
-
-    @property
-    def native_value(self) -> str:
-        """Return the native sensor value."""
-        return "configured"
-
-    @property
-    def extra_state_attributes(self) -> dict[str, bool | str | None]:
-        """Return webhook details users can copy into Skickamejl."""
-        data = config_entry_data(self._entry)
-        webhook_id = data[CONF_WEBHOOK_ID]
-        cloudhook_url = data.get(CONF_CLOUDHOOK_URL)
-        try:
-            home_assistant_url = ha_webhook.async_generate_url(
-                self.hass,
-                webhook_id,
-                allow_internal=True,
-                allow_external=True,
-                prefer_external=True,
-            )
-        except NoURLAvailableError:
-            home_assistant_url = None
-
-        webhook_url = cloudhook_url or home_assistant_url
-        has_public_url = bool(cloudhook_url) or _is_likely_public_url(
-            home_assistant_url
-        )
-        return {
-            "event_type": EVENT_EMAIL,
-            "webhook_path": ha_webhook.URL_WEBHOOK_PATH.format(webhook_id=webhook_id),
-            "webhook_url": webhook_url,
-            "cloudhook_url": cloudhook_url,
-            "home_assistant_url": home_assistant_url,
-            "url_source": "nabu_casa_cloudhook"
-            if cloudhook_url
-            else "home_assistant_url",
-            "internet_reachable": has_public_url,
-            "copy_to_skickamejl": webhook_url,
-            "setup_hint": _webhook_setup_hint(cloudhook_url, home_assistant_url),
         }
 
 
@@ -356,44 +295,3 @@ def _parse_timestamp(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
-
-
-def _is_likely_public_url(value: str | None) -> bool:
-    """Return whether a URL looks reachable from the internet."""
-    if not value:
-        return False
-
-    host = urlparse(value).hostname
-    if not host:
-        return False
-
-    try:
-        parsed_ip = ip_address(host)
-    except ValueError:
-        return host not in {"localhost", "homeassistant.local"} and not host.endswith(
-            ".local"
-        )
-
-    return not (
-        parsed_ip.is_private
-        or parsed_ip.is_loopback
-        or parsed_ip.is_link_local
-        or parsed_ip.is_reserved
-    )
-
-
-def _webhook_setup_hint(
-    cloudhook_url: str | None,
-    home_assistant_url: str | None,
-) -> str:
-    """Return a short setup hint for the webhook URL sensor."""
-    if cloudhook_url:
-        return "Copy copy_to_skickamejl or cloudhook_url into Skickamejl."
-
-    if _is_likely_public_url(home_assistant_url):
-        return "Copy copy_to_skickamejl into Skickamejl."
-
-    return (
-        "This URL looks local. Enable Home Assistant Cloud webhooks or configure a "
-        "public HTTPS external URL before using it from skickamejl.se."
-    )

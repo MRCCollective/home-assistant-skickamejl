@@ -26,7 +26,7 @@
     "step": {
       "init": {
         "title": "Update Skickamejl",
-        "description": "Change the Skickamejl backend URL, server API token, sender address, or default recipient. The server name is detected automatically.",
+        "description": "Webhook URL for this server (keep it secret): `{webhook_url}`. Copy it into Skickamejl's webhook settings. A local URL requires Home Assistant Cloud or a public external URL. If no URL is shown, configure an internal or external Home Assistant URL first. You can also update the connection settings here.",
         "data": {
           "server_url": "Backend URL",
           "api_key": "Server API token",
@@ -60,9 +60,6 @@
       },
       "last_queued_at": {
         "name": "Last queued at"
-      },
-      "webhook_url": {
-        "name": "Webhook URL"
       },
       "last_event_type": {
         "name": "Last event type"

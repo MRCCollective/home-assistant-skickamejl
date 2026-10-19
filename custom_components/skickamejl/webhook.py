@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from contextlib import suppress
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from aiohttp import web
@@ -13,6 +13,7 @@ from homeassistant.components import webhook as ha_webhook
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.network import NoURLAvailableError
 
 from .config import config_entry_data
 from .const import (
@@ -40,6 +41,32 @@ def ensure_webhook_id(hass: HomeAssistant, entry: ConfigEntry) -> str:
     data[CONF_WEBHOOK_ID] = webhook_id
     hass.config_entries.async_update_entry(entry, data=data)
     return webhook_id
+
+
+def webhook_url_for_config(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
+    """Return the webhook URL for display in the admin-only options flow."""
+    data = config_entry_data(entry)
+    cloudhook_url = data.get(CONF_CLOUDHOOK_URL)
+    if isinstance(cloudhook_url, str) and cloudhook_url:
+        return cloudhook_url
+
+    webhook_id = data.get(CONF_WEBHOOK_ID)
+    if not isinstance(webhook_id, str) or not webhook_id:
+        return None
+
+    try:
+        return cast(
+            str,
+            ha_webhook.async_generate_url(
+                hass,
+                webhook_id,
+                allow_internal=True,
+                allow_external=True,
+                prefer_external=True,
+            ),
+        )
+    except NoURLAvailableError:
+        return None
 
 
 async def async_setup_webhook(hass: HomeAssistant, entry: ConfigEntry) -> None:

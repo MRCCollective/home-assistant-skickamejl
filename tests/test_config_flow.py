@@ -7,15 +7,18 @@ from types import SimpleNamespace
 from custom_components.skickamejl.api import SkickamejlApiClient, SkickamejlServerInfo
 from custom_components.skickamejl.config import config_entry_data
 from custom_components.skickamejl.config_flow import (
+    SkickamejlOptionsFlow,
     _normalize_user_input,
     _validate_normalized_input,
     validate_input,
 )
 from custom_components.skickamejl.const import (
     CONF_API_KEY,
+    CONF_CLOUDHOOK_URL,
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
     CONF_SERVER_URL,
+    CONF_WEBHOOK_ID,
 )
 
 
@@ -94,3 +97,27 @@ async def test_validate_input_uses_authenticated_server_identity(monkeypatch) ->
     info = await validate_input(None, object(), data)
 
     assert info == {"title": "Produktion", "unique_id": "server-1"}
+
+
+async def test_options_flow_shows_webhook_url_only_in_configure_dialog() -> None:
+    """An admin can copy the secret after installing the integration."""
+    entry = SimpleNamespace(
+        data={
+            CONF_SERVER_URL: "https://skickamejl.se",
+            CONF_API_KEY: "secret",
+            CONF_SENDER_ADDRESS: "home@example.com",
+            CONF_RECIPIENT_ADDRESS: "you@example.com",
+            CONF_WEBHOOK_ID: "skickamejl_existing",
+            CONF_CLOUDHOOK_URL: "https://hooks.nabu.casa/cloud-hook",
+        },
+        options={},
+    )
+    flow = SkickamejlOptionsFlow(entry)
+    flow.hass = SimpleNamespace()
+
+    result = await flow.async_step_init()
+
+    assert result["type"] == "form"
+    assert result["description_placeholders"]["webhook_url"] == (
+        "https://hooks.nabu.casa/cloud-hook"
+    )

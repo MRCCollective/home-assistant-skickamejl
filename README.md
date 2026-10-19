@@ -106,13 +106,12 @@ Sensors:
 - `sensor.skickamejl_last_delivery_id`
 - `sensor.skickamejl_last_message_id`
 - `sensor.skickamejl_last_queued_at`
-- `sensor.skickamejl_webhook_url`
 - `sensor.skickamejl_last_event_type`
 - `sensor.skickamejl_last_template_id`
 - `sensor.skickamejl_last_webhook_delivery_id`
 - `sensor.skickamejl_last_webhook_received_at`
 
-The backend availability sensor checks `GET /api/status` every 60 seconds. The latest delivery sensors update when Home Assistant sends an email through either `notify.send_message` or `skickamejl.send_email`, and also when Skickamejl posts an incoming webhook event with delivery metadata. The webhook URL sensor stores the URL to copy into Skickamejl in its `webhook_url` attribute.
+The backend availability sensor checks `GET /api/status` every 60 seconds. The latest delivery sensors update when Home Assistant sends an email through either `notify.send_message` or `skickamejl.send_email`, and also when Skickamejl posts an incoming webhook event with delivery metadata. The webhook URL is shown only in the integration's administrator-only **Configure** dialog, not in an entity state or attributes.
 
 When a send response includes a `deliveryId`, the integration stores it and polls the Skickamejl detail endpoint every 60 seconds:
 
@@ -136,10 +135,10 @@ Delivery status values follow the Skickamejl backend response:
 Use this when another app or skickamejl.se sends transactional email and Home Assistant should react to it.
 
 1. Add the Skickamejl integration.
-2. Open the entity attributes for `sensor.skickamejl_webhook_url`.
-3. Copy the `copy_to_skickamejl` attribute into Skickamejl's webhook/event callback settings.
+2. As a Home Assistant administrator, open **Settings -> Devices & services -> Skickamejl -> Configure** for the server you added.
+3. Copy the webhook URL shown in that dialog into Skickamejl's webhook/event callback settings. You can reopen **Configure** whenever you need the URL again.
 
-When Home Assistant Cloud/Nabu Casa is active, the integration creates a cloudhook and `copy_to_skickamejl` uses that public `cloudhook_url`. Without Nabu Casa or another public external URL, the sensor shows the local Home Assistant URL and marks `internet_reachable` as `false`; that local URL works only from the same network. The webhook URL contains a long random ID and should be treated like a secret.
+When Home Assistant Cloud/Nabu Casa is active, the integration creates a cloudhook and shows that public URL in **Configure**. Otherwise it shows Home Assistant's configured URL, which may be local and work only from the same network. If no URL is available, configure an internal or external Home Assistant URL first. The webhook URL contains a long random ID and should be treated like a secret. Do not put it in dashboards, entity states, or automation traces.
 
 Skickamejl should send a JSON `POST` to that URL. The integration accepts both camelCase and snake_case fields:
 
@@ -191,7 +190,7 @@ This repository includes brand assets under `brand/` for HACS and an optional cu
 Register the card resource:
 
 ```text
-/skickamejl_static/skickamejl-card.js?v=0.5.0
+/skickamejl_static/skickamejl-card.js?v=0.5.1
 ```
 
 Use resource type:
@@ -334,7 +333,7 @@ actions:
 ## Try It For Real Checklist
 
 1. Confirm `binary_sensor.skickamejl_backend_available` is `on`.
-2. Copy `sensor.skickamejl_webhook_url` -> `webhook_url` into Skickamejl webhook settings.
+2. As an administrator, open **Settings -> Devices & services -> Skickamejl -> Configure** and copy the webhook URL into Skickamejl webhook settings.
 3. Trigger a transactional email from your app or skickamejl.se.
 4. Watch `sensor.skickamejl_last_template_id` and `sensor.skickamejl_last_delivery_status` update.
 5. Open the card and confirm delivery ID, message ID, and delivery history appear.

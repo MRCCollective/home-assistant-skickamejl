@@ -26,7 +26,7 @@
     "step": {
       "init": {
         "title": "Uppdatera Skickamejl",
-        "description": "Ändra backend-URL, server API-token, avsändaradress eller standardmottagare. Servernamnet hämtas automatiskt.",
+        "description": "Webhookadress för den här servern (håll den hemlig): `{webhook_url}`. Kopiera adressen till Skickamejls inställningar för webhookar. Om adressen är lokal behöver Home Assistant Cloud eller en publik extern URL konfigureras. Om ingen adress visas, konfigurera först en intern eller extern URL i Home Assistant. Här kan du också ändra anslutningsuppgifterna.",
         "data": {
           "server_url": "Backend-URL",
           "api_key": "Server API-token",
@@ -60,9 +60,6 @@
       },
       "last_queued_at": {
         "name": "Senast köad"
-      },
-      "webhook_url": {
-        "name": "Webhook-URL"
       },
       "last_event_type": {
         "name": "Senaste eventtyp"

@@ -28,6 +28,7 @@ from .const import (
     DEFAULT_SERVER_URL,
     DOMAIN,
 )
+from .webhook import webhook_url_for_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -168,6 +169,10 @@ class SkickamejlOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=_schema(config_entry_data(self._config_entry)),
             errors=errors,
+            description_placeholders={
+                "webhook_url": webhook_url_for_config(self.hass, self._config_entry)
+                or "—",
+            },
         )
 
 

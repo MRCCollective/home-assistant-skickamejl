@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from .config import config_entry_data
 from .const import (
     CONF_API_KEY,
+    CONF_CLOUDHOOK_URL,
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
     CONF_WEBHOOK_ID,
@@ -19,6 +20,7 @@ from .const import (
 
 _TO_REDACT = {
     CONF_API_KEY,
+    CONF_CLOUDHOOK_URL,
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
     CONF_WEBHOOK_ID,
