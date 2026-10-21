@@ -238,6 +238,71 @@ async def test_diagnostics_redact_webhook_credentials() -> None:
     assert result["entry"]["data"][CONF_CLOUDHOOK_URL] == "**REDACTED**"
 
 
+async def test_last_send_diagnostics_redact_addresses_and_omit_errors() -> None:
+    """Shared diagnostics hide addresses in detailed delivery API data."""
+    send_result = SkickamejlEmailSendResult(
+        email_message_id="email-1",
+        delivery_id="delivery-1",
+        message_id="message-1",
+        envelope_from="sender@example.com",
+        status="Delivered",
+        queued_at_utc="2026-08-03T10:00:00Z",
+        last_error="Could not send to recipient@example.com",
+        attempts=(
+            {
+                "attemptNumber": 1,
+                "recipientAddress": "recipient@example.com",
+                "error": "Recipient recipient@example.com rejected",
+                "responseMessage": "550 recipient@example.com rejected",
+                "details": {"EnvelopeTo": "other@example.com"},
+            },
+        ),
+        status_events=(
+            {
+                "status": "Delivered",
+                "detail": "Delivery to recipient@example.com failed",
+                "smtpResponse": "550 recipient@example.com rejected",
+                "details": [{"to": "recipient@example.com"}],
+                "recipients": ["recipient@example.com"],
+            },
+        ),
+    )
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        version=1,
+        data={},
+        options={},
+        runtime_data=SimpleNamespace(last_send=send_result),
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(
+        SimpleNamespace(data={}), entry
+    )
+    last_send = diagnostics["last_send"]
+
+    assert last_send["envelope_from"] == "**REDACTED**"
+    assert "last_error" not in last_send
+    assert last_send["attempts"] == [
+        {
+            "attemptNumber": 1,
+            "recipientAddress": "**REDACTED**",
+            "error": "**REDACTED**",
+            "responseMessage": "**REDACTED**",
+            "details": {"EnvelopeTo": "**REDACTED**"},
+        }
+    ]
+    assert last_send["status_events"] == [
+        {
+            "status": "Delivered",
+            "detail": "**REDACTED**",
+            "smtpResponse": "**REDACTED**",
+            "details": [{"to": "**REDACTED**"}],
+            "recipients": "**REDACTED**",
+        }
+    ]
+    assert send_result.attempts[0]["recipientAddress"] == "recipient@example.com"
+
+
 def test_webhook_event_sensor_values_and_attributes() -> None:
     """Webhook event sensors read values and attributes from runtime data."""
     entry = SimpleNamespace(
@@ -282,7 +347,7 @@ def test_diagnostics_helpers_summarize_health_and_last_send() -> None:
         "email_message_id": "email-1",
         "delivery_id": "delivery-1",
         "message_id": "message-1",
-        "envelope_from": "bounce@example.com",
+        "envelope_from": "**REDACTED**",
         "status": 2,
         "queued_at_utc": "2026-08-03T10:00:00Z",
         "attempt_count": None,
@@ -290,7 +355,6 @@ def test_diagnostics_helpers_summarize_health_and_last_send() -> None:
         "last_attempt_at_utc": None,
         "next_attempt_at_utc": None,
         "completed_at_utc": None,
-        "last_error": None,
         "attempts": [],
         "status_events": [],
     }

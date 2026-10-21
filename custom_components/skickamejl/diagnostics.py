@@ -24,6 +24,45 @@ _TO_REDACT = {
     CONF_RECIPIENT_ADDRESS,
     CONF_SENDER_ADDRESS,
     CONF_WEBHOOK_ID,
+    "to",
+    "To",
+    "from",
+    "From",
+    "recipient",
+    "Recipient",
+    "recipient_address",
+    "recipientAddress",
+    "RecipientAddress",
+    "recipients",
+    "Recipients",
+    "sender",
+    "Sender",
+    "sender_address",
+    "senderAddress",
+    "SenderAddress",
+    "envelope_from",
+    "envelopeFrom",
+    "EnvelopeFrom",
+    "envelope_to",
+    "envelopeTo",
+    "EnvelopeTo",
+    "last_error",
+    "lastError",
+    "LastError",
+    # SMTP response and status text may include the recipient address.
+    "error",
+    "Error",
+    "error_message",
+    "errorMessage",
+    "ErrorMessage",
+    "response_message",
+    "responseMessage",
+    "ResponseMessage",
+    "detail",
+    "Detail",
+    "smtp_response",
+    "smtpResponse",
+    "SmtpResponse",
 }
 
 
@@ -62,22 +101,25 @@ def _last_send_summary(entry: ConfigEntry) -> dict[str, Any] | None:
     result = getattr(runtime_data, "last_send", None)
     if result is None:
         return None
-    return {
-        "email_message_id": result.email_message_id,
-        "delivery_id": result.delivery_id,
-        "message_id": result.message_id,
-        "envelope_from": result.envelope_from,
-        "status": result.status,
-        "queued_at_utc": result.queued_at_utc,
-        "attempt_count": result.attempt_count,
-        "created_at_utc": result.created_at_utc,
-        "last_attempt_at_utc": result.last_attempt_at_utc,
-        "next_attempt_at_utc": result.next_attempt_at_utc,
-        "completed_at_utc": result.completed_at_utc,
-        "last_error": result.last_error,
-        "attempts": list(result.attempts),
-        "status_events": list(result.status_events),
-    }
+    summary: dict[str, Any] = async_redact_data(
+        {
+            "email_message_id": result.email_message_id,
+            "delivery_id": result.delivery_id,
+            "message_id": result.message_id,
+            "envelope_from": result.envelope_from,
+            "status": result.status,
+            "queued_at_utc": result.queued_at_utc,
+            "attempt_count": result.attempt_count,
+            "created_at_utc": result.created_at_utc,
+            "last_attempt_at_utc": result.last_attempt_at_utc,
+            "next_attempt_at_utc": result.next_attempt_at_utc,
+            "completed_at_utc": result.completed_at_utc,
+            "attempts": list(result.attempts),
+            "status_events": list(result.status_events),
+        },
+        _TO_REDACT,
+    )
+    return summary
 
 
 def _last_webhook_event_summary(entry: ConfigEntry) -> dict[str, Any] | None:
@@ -86,19 +128,5 @@ def _last_webhook_event_summary(entry: ConfigEntry) -> dict[str, Any] | None:
     event = getattr(runtime_data, "last_webhook_event", None)
     if event is None:
         return None
-    summary: dict[str, Any] = async_redact_data(
-        event.as_event_data(),
-        {
-            CONF_RECIPIENT_ADDRESS,
-            CONF_SENDER_ADDRESS,
-            "to",
-            "from",
-            "recipient",
-            "recipient_address",
-            "recipientAddress",
-            "sender",
-            "sender_address",
-            "senderAddress",
-        },
-    )
+    summary: dict[str, Any] = async_redact_data(event.as_event_data(), _TO_REDACT)
     return summary

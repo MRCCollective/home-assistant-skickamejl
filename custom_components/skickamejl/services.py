@@ -100,11 +100,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     )
 
 
-async def async_unload_services(hass: HomeAssistant) -> None:
-    """Unregister Skickamejl services."""
-    hass.services.async_remove(DOMAIN, SERVICE_SEND_EMAIL)
-
-
 def _runtime_from_call(
     hass: HomeAssistant,
     call: ServiceCall,

@@ -9,6 +9,7 @@ import pytest
 from homeassistant.const import ATTR_CONFIG_ENTRY_ID
 from homeassistant.exceptions import ServiceValidationError
 
+from custom_components.skickamejl import async_remove_entry
 from custom_components.skickamejl.api import SkickamejlEmailSendResult
 from custom_components.skickamejl.const import (
     ATTR_FROM,
@@ -213,6 +214,70 @@ async def test_send_email_service_requires_body() -> None:
                 }
             )
         )
+
+
+async def test_send_email_service_survives_removing_and_readding_last_entry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Removing the final entry must not unregister the send action."""
+    old_entry = SimpleNamespace(entry_id="entry-1")
+    entries = FakeConfigEntries([old_entry])
+    hass = SimpleNamespace(
+        data={DOMAIN: {}},
+        services=FakeServices(),
+        config_entries=entries,
+    )
+
+    async def remove_cloudhook(_hass: Any, _entry: Any) -> None:
+        """Stand in for remote cloudhook cleanup."""
+
+    monkeypatch.setattr(
+        "custom_components.skickamejl.async_remove_cloudhook", remove_cloudhook
+    )
+    monkeypatch.setattr(
+        "custom_components.skickamejl.runtime.async_dispatcher_send",
+        lambda _hass, _signal: None,
+    )
+    monkeypatch.setattr(
+        "custom_components.skickamejl.runtime.async_start_delivery_polling",
+        lambda _hass, _entry: None,
+    )
+
+    await async_setup_services(hass)
+    handler, _schema = hass.services.registered[(DOMAIN, SERVICE_SEND_EMAIL)]
+    entries._entries.clear()
+    await async_remove_entry(hass, old_entry)
+
+    assert hass.services.has_service(DOMAIN, SERVICE_SEND_EMAIL)
+    with pytest.raises(ServiceValidationError, match="Unknown or unloaded"):
+        await handler(SimpleNamespace(data={ATTR_CONFIG_ENTRY_ID: "entry-1"}))
+
+    api = FakeApi()
+    runtime_data = SimpleNamespace(api=api, last_send=None)
+    entry = SimpleNamespace(
+        entry_id="entry-2",
+        data={
+            CONF_RECIPIENT_ADDRESS: "recipient@example.com",
+            CONF_SENDER_ADDRESS: "sender@example.com",
+        },
+        options={},
+        runtime_data=runtime_data,
+    )
+    entries._entries.append(entry)
+    hass.data[DOMAIN][entry.entry_id] = runtime_data
+
+    await handler(
+        SimpleNamespace(
+            data={
+                ATTR_CONFIG_ENTRY_ID: entry.entry_id,
+                ATTR_SUBJECT: "After re-adding",
+                ATTR_TEXT_BODY: "Hello",
+            }
+        )
+    )
+
+    assert len(api.calls) == 1
+    assert api.calls[0]["recipient_address"] == "recipient@example.com"
 
 
 def test_entry_id_from_call_requires_config_entry_id() -> None:
